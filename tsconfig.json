@@ -1,0 +1,10 @@
+{
+  "extends": "fastify-tsconfig",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ESNext",
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "lib": ["es2018"]
+  }
+}
