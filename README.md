@@ -97,18 +97,18 @@ The API returns appropriate HTTP status codes and error messages:
 /simple/18/153895,01042669/473352,618162258
 ```
 2. Complex visualization with a polygon:
-   ```
-   /18/153895,01042669/473352,618162258?geojson={"type":"Polygon","coordinates":[[[5.37112,52.2482],[5.37100,52.2482],[5.37093,52.2482],[5.37100,52.2481],[5.37112,52.2482]]]}
-   ```
+```
+/18/153895,01042669/473352,618162258?geojson={"type":"Polygon","coordinates":[[[5.37112,52.2482],[5.37100,52.2482],[5.37093,52.2482],[5.37100,52.2481],[5.37112,52.2482]]]}
+```
 3. Point with custom color and aerial background:
-   ```
-   /18/153895,01042669/473352,618162258?geojson={"type":"Point","coordinates":[5.37112,52.2482]}&kleur=blue&achtergrond=lufo
-   ```
+```
+/18/153895,01042669/473352,618162258?geojson={"type":"Point","coordinates":[5.37112,52.2482]}&kleur=blue&achtergrond=lufo
+```
 4. Simple location with grayscale background:
-   ```
-   /18/153895,01042669/473352,618162258?achtergrond=grijs
-   ```
+```
+/18/153895,01042669/473352,618162258?achtergrond=grijs
+```
 6. MultiPoint visualization with custom styling:
-   ```
-   /18/153895,01042669/473352,618162258?geojson={"type":"MultiPoint","coordinates":[[5.37112,52.2482],[5.37100,52.2482]]}&kleur=rgba(255,0,0,0.5)&achtergrond=pastel
-   ```
+```
+/18/153895,01042669/473352,618162258?geojson={"type":"MultiPoint","coordinates":[[5.37112,52.2482],[5.37100,52.2482]]}&kleur=rgba(255,0,0,0.5)&achtergrond=pastel
+```
