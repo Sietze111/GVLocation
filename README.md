@@ -101,5 +101,4 @@ The API returns appropriate HTTP status codes and error messages:
 4. Simple location with grayscale background:
    GET /18/153895,01042669/473352,618162258?achtergrond=grijs
 5. MultiPoint visualization with custom styling:
-   GET /18/153895,01042669/473352,618162258?geojson={"type":"MultiPoint","coordinates":[[5.37112,52.2482],[5.37100,52.2482]]}&kleur=rgba(255,0,0,0.5)&achtergrond=pastel
-   ```
+   ``` GET /18/153895,01042669/473352,618162258?geojson={"type":"MultiPoint","coordinates":[[5.37112,52.2482],[5.37100,52.2482]]}&kleur=rgba(255,0,0,0.5)&achtergrond=pastel
