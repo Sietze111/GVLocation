@@ -88,6 +88,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
     '/tiles/warm',
     {
       schema: {
+        tags: ['tiles'],
         body: Type.Object({
           items: Type.Array(warmItemSchema, {
             minItems: 1,

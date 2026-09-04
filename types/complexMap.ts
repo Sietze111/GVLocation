@@ -7,6 +7,7 @@ import {
 } from './map.js';
 
 export const complexTileSchema = {
+  tags: ['tiles'],
   params: tileParamsSchema,
   querystring: Type.Object({
     geojson: Type.Optional(

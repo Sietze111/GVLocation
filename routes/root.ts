@@ -10,6 +10,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
     '/health',
     {
       schema: {
+        tags: ['system'],
         response: {
           200: Type.Object({
             status: Type.String(),

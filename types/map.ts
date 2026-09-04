@@ -62,6 +62,7 @@ export const formatQuerySchema = Type.Optional(
 );
 
 export const tileSchema = {
+  tags: ['tiles'],
   params: tileParamsSchema,
   querystring: Type.Object({
     crs: crsQuerySchema,

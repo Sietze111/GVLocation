@@ -1,4 +1,8 @@
 import { MAP_CONSTANTS } from '../constants/map.js';
+import {
+  getOtelInstruments,
+  type OtelInstruments,
+} from './telemetry.js';
 
 const PREFIX = MAP_CONSTANTS.METRICS_PREFIX;
 
@@ -54,9 +58,41 @@ const HISTOGRAM_HELP: Record<string, string> = {
   tile_fetch_duration_ms: 'External tile fetch duration in milliseconds.',
 };
 
+type OtelCounterKeys =
+  | 'requestsTotal'
+  | 'errorsTotal'
+  | 'validationErrorsTotal'
+  | 'cacheHitsTotal'
+  | 'cacheMissesTotal'
+  | 'tilesFetchedTotal'
+  | 'batchItemsSuccessTotal'
+  | 'batchItemsFailedTotal';
+
+const OTEL_COUNTER: Record<string, OtelCounterKeys> = {
+  requests_total: 'requestsTotal',
+  errors_total: 'errorsTotal',
+  validation_errors_total: 'validationErrorsTotal',
+  cache_hits_total: 'cacheHitsTotal',
+  cache_misses_total: 'cacheMissesTotal',
+  tiles_fetched_total: 'tilesFetchedTotal',
+  batch_items_success_total: 'batchItemsSuccessTotal',
+  batch_items_failed_total: 'batchItemsFailedTotal',
+};
+
+const OTEL_HISTOGRAM: Record<
+  string,
+  'requestDurationMs' | 'tileFetchDurationMs'
+> = {
+  request_duration_ms: 'requestDurationMs',
+  tile_fetch_duration_ms: 'tileFetchDurationMs',
+};
+
 export const metrics = {
   increment(name: string) {
     if (name in state.counters) state.counters[name] += 1;
+    const inst = OTEL_COUNTER[name];
+    const otel = inst ? getOtelInstruments() : undefined;
+    if (otel) otel[inst].add(1);
   },
 
   observe(name: string, value: number) {
@@ -68,9 +104,24 @@ export const metrics = {
           state.histograms[name].observations.slice(-5000);
       }
     }
+    const inst = OTEL_HISTOGRAM[name];
+    const otel = inst ? getOtelInstruments() : undefined;
+    if (otel) otel[inst].record(value);
   },
 
   setCacheStats(hits: number, misses: number) {
+    const prevHits = state.counters.cache_hits_total;
+    const prevMisses = state.counters.cache_misses_total;
+
+    // Deltas into the OTel counters (true monotonic "total" semantics).
+    const hitDelta = Math.max(0, hits - prevHits);
+    const missDelta = Math.max(0, misses - prevMisses);
+    const otel = getOtelInstruments();
+    if (otel) {
+      if (hitDelta > 0) otel.cacheHitsTotal.add(hitDelta);
+      if (missDelta > 0) otel.cacheMissesTotal.add(missDelta);
+    }
+
     state.counters.cache_hits_total = hits;
     state.counters.cache_misses_total = misses;
   },

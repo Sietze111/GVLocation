@@ -38,6 +38,11 @@ Swagger UI is available in non-production at `http://localhost:3000/documentatio
 | `RATE_LIMIT_MAX`       | `1000`           | Max requests per time window per key      |
 | `RATE_LIMIT_WINDOW_MS` | `60000`          | Rate limit window (ms)                    |
 | `CORS_ORIGIN`          | `true`           | CORS origin (see CORS section)            |
+| `OTEL_ENABLED`         | `true`           | Set to `false` to disable OpenTelemetry   |
+| `OTEL_SERVICE_NAME`    | `gvlocation`     | OTel service/resource name                |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | —         | OTLP collector base URL (e.g. `http://collector:4318`) |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | — | Optional per-signal OTLP overrides |
+| `OTEL_METRIC_EXPORT_INTERVAL_MS` | `60000` | How often metrics are pushed (ms)  |
 
 ## Common Concepts
 
@@ -82,6 +87,24 @@ This makes repeated fetches of the same tile cheap for both your app and our ups
 - **`ETag` + `304`** — conditional requests return `304 Not Modified` when the tile is unchanged.
 - **`Vary: Accept`** — caches store PNG/WebP/AVIF versions separately.
 - **`X-Adjusted-Zoom`** — returned by the overlay endpoint when the zoom was reduced to fit the geometry inside the tile.
+
+### OpenTelemetry
+
+GVLocation ships with an **OpenTelemetry SDK** so it feeds the same Grafana stack as your other apps (OTel Collector → Tempo/Prometheus → Grafana):
+
+- **Traces** — HTTP server spans (via `FastifyInstrumentation`) and upstream tile-fetch client spans (via `HttpInstrumentation`) are exported as OTLP, giving you a trace for every `/tiles/*` request including how long each OSM/PDOK fetch took.
+- **Metrics** — all business metrics (requests, errors, cache hits/misses, tiles fetched, batch outcomes, request/tile latency) are exported as OTLP metrics under the `gvlocation_` prefix — the same names exposed on the `/metrics` Prometheus endpoint, so both consumers report identical values.
+
+To enable it, point the SDK at your collector:
+
+```bash
+# Linux/App Service
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=gvlocation
+OTEL_EXPORTER_OTLP_ENDPOINT=http://<collector-host>:4318
+```
+
+The exporter honours the standard `OTEL_EXPORTER_OTLP_*` environment variables (base endpoint or per-signal traces/metrics endpoints, protocol). Metrics are pushed every `OTEL_METRIC_EXPORT_INTERVAL_MS` (default 60 s). If no collector is reachable, the app keeps serving and logs a single non-fatal startup warning — set `OTEL_ENABLED=false` to skip telemetry entirely.
 
 ---
 
@@ -411,9 +434,9 @@ This API is designed for Azure App Service deployment:
 - **Runtime**: Node.js 20+ on Linux
 - **Plan**: At least B2 (4 vCPU, 8 GB RAM) for concurrent image processing
 - **Scale out**: 2+ instances for high availability; the tile cache is per-instance
-- **Environment variables**: Configure `PORT`, `NODE_ENV=production`, `RATE_LIMIT_MAX` in App Settings
+- **Environment variables**: Configure `PORT`, `NODE_ENV=production`, `RATE_LIMIT_MAX`, and the `OTEL_*` settings in App Settings
 - **Health check path**: `/health`
-- **Monitoring**: scrape `/metrics` (Prometheus) to observe cache hit-rate, upstream traffic and latency; the `tiles_fetched_total` metric is a direct measure of external OSM/PDOK egress.
+- **Monitoring**: scrape `/metrics` (Prometheus) **or** enable OpenTelemetry (`OTEL_EXPORTER_OTLP_ENDPOINT` pointing at your collector) to observe cache hit-rate, upstream traffic and latency; the `tiles_fetched_total` metric is a direct measure of external OSM/PDOK egress.
 - **OSM tile usage policy**: The API sends a `User-Agent: GVLocation/1.0` header as required by OpenStreetMap. Ensure your deployment identifies itself properly.
 
 ### Example Azure CLI deployment

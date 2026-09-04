@@ -69,6 +69,7 @@ export const errorResponseSchema = Type.Object(
 );
 
 export const batchSchema = {
+  tags: ['tiles'],
   body: Type.Object(
     {
       items: Type.Array(batchItemSchema, {
