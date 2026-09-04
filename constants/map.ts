@@ -1,5 +1,9 @@
 export type TileKey = keyof typeof TILE_URL_MAPPING;
 
+export type OutputFormat = 'png' | 'webp' | 'avif';
+
+const FORMATS = ['png', 'webp', 'avif'] as const;
+
 export const MAP_CONSTANTS = {
   TILE_SIZE: 256,
 
@@ -25,6 +29,9 @@ export const MAP_CONSTANTS = {
 
   DEFAULT_COLOR: 'red',
   DEFAULT_TILE_KEY: 'osm' as TileKey,
+  DEFAULT_FORMAT: 'png' as OutputFormat,
+
+  OUTPUT_FORMATS: FORMATS,
 
   TILE_FETCH_TIMEOUT_MS: 10000,
   CACHE_MAX_SIZE: 2000,

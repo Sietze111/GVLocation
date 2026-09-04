@@ -12,9 +12,11 @@ import { tileService } from '../services/tileService.js';
 import { complexTileSchema } from '../types/complexMap.js';
 import { ValidationError } from '../types/errors.js';
 import {
-  validateRdCoords,
+  validateCoordinates,
   validateZ,
   validateColor,
+  parseCrs,
+  parseFormat,
 } from '../utils/validateRD.js';
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
@@ -28,9 +30,17 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           geojson: geojsonString,
           achtergrond,
           kleur = MAP_CONSTANTS.DEFAULT_COLOR,
+          crs = 'rd',
+          format,
         } = request.query;
 
-        const { x: parsedX, y: parsedY } = validateRdCoords(x, y);
+        const crsType = parseCrs(crs);
+        const outputFormat = parseFormat(format);
+        const { x: parsedX, y: parsedY } = validateCoordinates(
+          x,
+          y,
+          crsType
+        );
         validateZ(z);
         validateColor(kleur);
 
@@ -70,7 +80,8 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           parsedX,
           parsedY,
           z,
-          parsedGeoJSON
+          parsedGeoJSON,
+          crsType
         );
 
         const [tiles, overlayedImageBuffer] = await Promise.all([
@@ -87,20 +98,26 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
             achtergrond,
             kleur,
             bbox,
-            pixelCoords
+            pixelCoords,
+            outputFormat
           ),
         ]);
 
         const compositeImageBuffer = await imageService.createCompositeImage(
           tiles,
-          overlayedImageBuffer
+          overlayedImageBuffer,
+          outputFormat
         );
 
         if (adjustedZ !== z) {
           reply.header('X-Adjusted-Zoom', adjustedZ);
         }
 
-        return responseService.sendImage(compositeImageBuffer, reply);
+        return responseService.sendImage(
+          compositeImageBuffer,
+          reply,
+          outputFormat
+        );
       } catch (error) {
         request.log.error(error);
         return responseService.handleError(error, reply);

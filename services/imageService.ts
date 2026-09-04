@@ -1,39 +1,58 @@
 import type { OverlayOptions } from 'sharp';
 import sharp from 'sharp';
-import { MAP_CONSTANTS } from '../constants/map.js';
+import { MAP_CONSTANTS, OutputFormat } from '../constants/map.js';
+import { ValidationError } from '../types/errors.js';
 
 const T = MAP_CONSTANTS.TILE_SIZE;
+
+const applyFormat = (
+  pipeline: sharp.Sharp,
+  format: OutputFormat
+): sharp.Sharp => {
+  switch (format) {
+    case 'webp':
+      return pipeline.webp({ quality: 85 });
+    case 'avif':
+      return pipeline.avif({ quality: 70 });
+    case 'png':
+    default:
+      return pipeline.png();
+  }
+};
 
 export const imageService = {
   async createGeoJSONOverlay(
     pathString: string,
     kleur: string,
     xValue: number,
-    attribution: string
+    attribution: string,
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
   ): Promise<Buffer> {
-    return sharp({
-      create: {
-        width: T,
-        height: T,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      },
-    })
-      .composite([
-        {
-          input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
-              <path d="${pathString}" stroke="${kleur}" fill="${kleur}" fill-opacity="0.5" stroke-width="1" />
-              <rect x="${xValue}" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="black" opacity="0.5"/>
-              <text x="${T - 5}" y="${T - 5}" fill="white" font-family="Arial" font-size="9" text-anchor="end">
-                ${attribution}
-              </text>
-            </svg>`
-          ),
-          blend: 'dest-over',
+    return applyFormat(
+      sharp({
+        create: {
+          width: T,
+          height: T,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
         },
-      ])
-      .png()
+      })
+        .composite([
+          {
+            input: Buffer.from(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
+                <path d="${pathString}" stroke="${kleur}" fill="${kleur}" fill-opacity="0.5" stroke-width="1" />
+                <rect x="${xValue}" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="black" opacity="0.5"/>
+                <text x="${T - 5}" y="${T - 5}" fill="white" font-family="Arial" font-size="9" text-anchor="end">
+                  ${attribution}
+                </text>
+              </svg>`
+            ),
+            blend: 'dest-over',
+          },
+        ]),
+      format
+    )
       .toBuffer();
   },
 
@@ -42,7 +61,8 @@ export const imageService = {
     pixelX: number,
     pixelY: number,
     markerRadius: number,
-    attribution: string
+    attribution: string,
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
   ): Promise<Buffer> {
     if (
       !Buffer.isBuffer(tileBuffer) ||
@@ -54,52 +74,83 @@ export const imageService = {
       throw new Error('Invalid input parameters.');
     }
 
-    const overlayedImageBuffer = await sharp(tileBuffer)
-      .composite([
-        {
-          input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
-              <circle cx="${pixelX}" cy="${pixelY}" r="${markerRadius}" stroke="red" fill="rgba(255, 0, 0, 0.5)" fill-opacity="0.8" stroke-width="1.5" />
-            </svg>`
-          ),
-          top: 0,
-          left: 0,
-          blend: 'over',
-        },
-        {
-          input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
-              <rect x="170" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="gray" opacity="0.2"/>
-              <text x="250" y="251" fill="black" font-family="Arial" font-size="9" text-anchor="end">
-                ${attribution}
-              </text>
-            </svg>`
-          ),
-          top: 0,
-          left: 0,
-          blend: 'over',
-        },
-      ])
-      .png()
-      .toBuffer();
+    const pipeline = sharp(tileBuffer).composite([
+      {
+        input: Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
+            <circle cx="${pixelX}" cy="${pixelY}" r="${markerRadius}" stroke="red" fill="rgba(255, 0, 0, 0.5)" fill-opacity="0.8" stroke-width="1.5" />
+          </svg>`
+        ),
+        top: 0,
+        left: 0,
+        blend: 'over',
+      },
+      {
+        input: Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
+            <rect x="170" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="gray" opacity="0.2"/>
+            <text x="250" y="251" fill="black" font-family="Arial" font-size="9" text-anchor="end">
+              ${attribution}
+            </text>
+          </svg>`
+        ),
+        top: 0,
+        left: 0,
+        blend: 'over',
+      },
+    ]);
 
-    return overlayedImageBuffer;
+    return applyFormat(pipeline, format).toBuffer();
   },
 
-  async createCompositeImage(
-    tiles: OverlayOptions[],
-    overlayedImageBuffer: Buffer
+  async createMarkerOnly(
+    pixelX: number,
+    pixelY: number,
+    markerRadius: number,
+    attribution: string,
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
   ): Promise<Buffer> {
-    return sharp({
+    const pipeline = sharp({
       create: {
         width: T,
         height: T,
         channels: 4,
         background: { r: 0, g: 0, b: 0, alpha: 0 },
       },
-    })
-      .composite([...tiles, { input: overlayedImageBuffer }])
-      .png()
-      .toBuffer();
+    }).composite([
+      {
+        input: Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
+            <circle cx="${pixelX}" cy="${pixelY}" r="${markerRadius}" stroke="red" fill="rgba(255, 0, 0, 0.5)" fill-opacity="0.8" stroke-width="1.5" />
+            <rect x="170" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="gray" opacity="0.2"/>
+            <text x="250" y="251" fill="black" font-family="Arial" font-size="9" text-anchor="end">
+              ${attribution}
+            </text>
+          </svg>`
+        ),
+        top: 0,
+        left: 0,
+        blend: 'over',
+      },
+    ]);
+
+    return applyFormat(pipeline, format).toBuffer();
+  },
+
+  async createCompositeImage(
+    tiles: OverlayOptions[],
+    overlayedImageBuffer: Buffer,
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
+  ): Promise<Buffer> {
+    const pipeline = sharp({
+      create: {
+        width: T,
+        height: T,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    }).composite([...tiles, { input: overlayedImageBuffer }]);
+
+    return applyFormat(pipeline, format).toBuffer();
   },
 };

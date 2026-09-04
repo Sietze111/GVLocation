@@ -11,6 +11,7 @@ import type {
 import { coordinateService } from './coordinateService.js';
 import { tileCache } from './tileCache.js';
 import { httpsAgent } from '../utils/httpAgent.js';
+import type { Crs } from '../utils/validateRD.js';
 
 interface TileCalculationResult {
   tileCoords: TileCoordinates;
@@ -103,10 +104,11 @@ export const tileService = {
   async calculateTileData(
     x: number,
     y: number,
-    z: number
+    z: number,
+    crs: Crs = 'rd'
   ): Promise<TileCalculationResult> {
     try {
-      const wgs84Coords = coordinateService.rdToWgs84({ x, y });
+      const wgs84Coords = coordinateService.toWgs84({ x, y }, crs);
       const tileCoords = tileService.calculateTileCoordinates(wgs84Coords, z);
       const pixelCoords = tileService.calculatePixelCoordinates(
         wgs84Coords,

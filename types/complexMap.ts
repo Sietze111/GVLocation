@@ -10,6 +10,8 @@ export const complexTileSchema = {
     geojson: Type.Optional(Type.String()),
     achtergrond: Type.Optional(Type.String()),
     kleur: Type.Optional(Type.String()),
+    crs: Type.Optional(Type.String()),
+    format: Type.Optional(Type.String()),
   }),
   response: {
     200: {

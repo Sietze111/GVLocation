@@ -10,6 +10,8 @@ export const batchSchema = {
         geojson: Type.Optional(Type.String()),
         achtergrond: Type.Optional(Type.String()),
         kleur: Type.Optional(Type.String()),
+        crs: Type.Optional(Type.String()),
+        format: Type.Optional(Type.String()),
       }),
       { minItems: 1, maxItems: 100 }
     ),
@@ -19,7 +21,8 @@ export const batchSchema = {
       results: Type.Array(
         Type.Object({
           index: Type.Number(),
-          image: Type.String({ description: 'Base64-encoded PNG' }),
+          image: Type.String({ description: 'Base64-encoded image' }),
+          format: Type.Optional(Type.String()),
           adjustedZoom: Type.Optional(Type.Number()),
         })
       ),

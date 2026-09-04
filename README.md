@@ -32,13 +32,29 @@ Returns server status, uptime, and cache statistics.
 
 Single coordinate tile with red marker.
 
-| Param | Type   | Description                     |
-| ----- | ------ | ------------------------------- |
-| `z`   | number | Zoom level (8-19)               |
-| `x`   | string | RD X coordinate (0-300000)      |
-| `y`   | string | RD Y coordinate (300000-650000) |
+| Param | Type   | Description                              |
+| ----- | ------ | ---------------------------------------- |
+| `z`   | number | Zoom level (8-19)                        |
+| `x`   | string | X coordinate (see `crs` below)           |
+| `y`   | string | Y coordinate (see `crs` below)           |
+
+| Query | Type   | Description                                   |
+| ----- | ------ | --------------------------------------------- |
+| `crs` | string | `rd` (default) or `wgs84`                     |
+| `format` | string | Output format: `png` (default), `webp`, `avif` |
+
+- **`crs=rd` (default)**: `x`/`y` are RD coordinates. X 0-300000, Y 300000-650000.
+- **`crs=wgs84`**: `x`/`y` are longitude/latitude. X (lon) -180 to 180, Y (lat) -90 to 90.
+- **`format`**: `png` (default, lossless), `webp` (lossy, ~75% smaller), `avif` (lossy, ~85% smaller). WebP/AVIF are great for reducing bandwidth and storage at scale.
 
 Supports comma and dot decimal separators (e.g. `153895,01042669` or `153895.01042669`).
+
+Examples:
+```
+/simple/18/153895,01042669/473352,618162258                 # RD
+/simple/18/5.37112/52.2482?crs=wgs84                        # WGS84
+/simple/18/5.37112/52.2482?crs=wgs84&format=webp            # WebP output
+```
 
 ### `GET /:z/:x/:y`
 
@@ -49,6 +65,8 @@ Single coordinate tile with GeoJSON overlay.
 | `geojson`     | string | GeoJSON geometry (Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon) |
 | `achtergrond` | string | `osm` (default) or `luchtfoto`/`pdok` (PDOK aerial)                                      |
 | `kleur`       | string | CSS color (default: `red`)                                                               |
+| `crs`         | string | `rd` (default) or `wgs84` for `x`/`y`                                                    |
+| `format`      | string | Output format: `png` (default), `webp`, `avif`                                           |
 
 Returns `X-Adjusted-Zoom` header when zoom was reduced to fit geometry.
 
@@ -73,12 +91,19 @@ Process multiple coordinates in a single request. Designed for bulk report gener
       "geojson": "{\"type\":\"Point\",\"coordinates\":[5.371,52.248]}",
       "kleur": "blue",
       "achtergrond": "luchtfoto"
+    },
+    {
+      "z": 17,
+      "x": "5.4500",
+      "y": "52.1500",
+      "crs": "wgs84",
+      "format": "webp"
     }
   ]
 }
 ```
 
-- `items`: Array of 1-100 tile requests. Each item has the same params as the single endpoints.
+- `items`: Array of 1-100 tile requests. Each item has the same params as the single endpoints, plus optional `crs` (default `rd`) and `format` (default `png`).
 - All items are processed concurrently (10 workers) with shared tile cache.
 - Failed items return an error message without failing the whole batch.
 
@@ -87,8 +112,8 @@ Process multiple coordinates in a single request. Designed for bulk report gener
 ```json
 {
   "results": [
-    { "index": 0, "image": "<base64 PNG>", "adjustedZoom": null },
-    { "index": 1, "image": "<base64 PNG>", "adjustedZoom": 16 }
+    { "index": 0, "image": "<base64 PNG>", "format": "png", "adjustedZoom": null },
+    { "index": 1, "image": "<base64 WebP>", "format": "webp", "adjustedZoom": 16 }
   ],
   "stats": {
     "total": 2,

@@ -1,4 +1,4 @@
-import { MAP_CONSTANTS } from '../constants/map.js';
+import { MAP_CONSTANTS, OutputFormat } from '../constants/map.js';
 import { handleGeoJSON } from './geojsonUtils.js';
 import { imageService } from './imageService.js';
 import { overlayConfigService } from './overlayConfigService.js';
@@ -19,15 +19,16 @@ export const overlayService = {
     achtergrond: string | undefined,
     kleur: string,
     bbox: [number, number, number, number],
-    pixelCoords: PixelCoords
+    pixelCoords: PixelCoords,
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
   ): Promise<Buffer> {
     if (!geojson) {
-      return imageService.createMarkerOverlay(
-        Buffer.from(''),
+      return imageService.createMarkerOnly(
         pixelCoords.x,
         pixelCoords.y,
         MAP_CONSTANTS.MARKER_RADIUS,
-        MAP_CONSTANTS.OSM_ATTRIBUTION
+        MAP_CONSTANTS.OSM_ATTRIBUTION,
+        format
       );
     }
 
@@ -47,7 +48,8 @@ export const overlayService = {
       pathString,
       kleur,
       xValue,
-      attribution
+      attribution,
+      format
     );
   },
 };

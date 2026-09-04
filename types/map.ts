@@ -33,6 +33,10 @@ export const tileSchema = {
     x: Type.String(),
     y: Type.String(),
   }),
+  querystring: Type.Object({
+    crs: Type.Optional(Type.String()),
+    format: Type.Optional(Type.String()),
+  }),
   response: {
     200: Type.String(),
   },

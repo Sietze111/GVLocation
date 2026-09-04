@@ -1,4 +1,5 @@
 import tilebelt from '@mapbox/tilebelt';
+import type { Crs } from '../utils/validateRD.js';
 import { coordinateService } from './coordinateService.js';
 import { checkGeoJSONFit } from './geojsonFitService.js';
 import { tileService } from './tileService.js';
@@ -13,12 +14,13 @@ export const tileCoordinateService = {
     x: number,
     y: number,
     z: number,
-    geojson?: ParsedGeoJSON
+    geojson?: ParsedGeoJSON,
+    crs: Crs = 'rd'
   ) {
-    const { longitude: lon, latitude: lat } = coordinateService.rdToWgs84({
-      x,
-      y,
-    });
+    const { longitude: lon, latitude: lat } = coordinateService.toWgs84(
+      { x, y },
+      crs
+    );
 
     if (geojson !== undefined) {
       z = checkGeoJSONFit(lon, lat, z, geojson);
@@ -46,6 +48,7 @@ export const tileCoordinateService = {
       tileY,
       bbox,
       pixelCoords,
+      wgs84Coords: { longitude: lon, latitude: lat },
     };
   },
 };

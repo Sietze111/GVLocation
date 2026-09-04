@@ -13,10 +13,13 @@ import { tileCache } from '../services/tileCache.js';
 import { batchSchema } from '../types/batch.js';
 import { ValidationError } from '../types/errors.js';
 import {
-  validateRdCoords,
+  validateCoordinates,
   validateZ,
   validateColor,
+  parseCrs,
+  parseFormat,
 } from '../utils/validateRD.js';
+import type { OutputFormat } from '../constants/map.js';
 
 interface BatchItem {
   z: number;
@@ -25,14 +28,27 @@ interface BatchItem {
   geojson?: string;
   achtergrond?: string;
   kleur?: string;
+  crs?: string;
+  format?: string;
 }
 
 async function processSingleItem(item: BatchItem, index: number) {
-  const { z, x, y, geojson: geojsonString, achtergrond, kleur } = item;
+  const {
+    z,
+    x,
+    y,
+    geojson: geojsonString,
+    achtergrond,
+    kleur,
+    crs = 'rd',
+    format,
+  } = item;
   const color = kleur || MAP_CONSTANTS.DEFAULT_COLOR;
+  const crsType = parseCrs(crs);
+  const outputFormat: OutputFormat = parseFormat(format);
 
   validateZ(z);
-  const { x: parsedX, y: parsedY } = validateRdCoords(x, y);
+  const { x: parsedX, y: parsedY } = validateCoordinates(x, y, crsType);
   validateColor(color);
 
   let parsedGeoJSON: { type: string; coordinates: unknown } | undefined;
@@ -62,7 +78,8 @@ async function processSingleItem(item: BatchItem, index: number) {
       parsedX,
       parsedY,
       z,
-      parsedGeoJSON
+      parsedGeoJSON,
+      crsType
     );
 
   const [tiles, overlayedImageBuffer] = await Promise.all([
@@ -79,18 +96,21 @@ async function processSingleItem(item: BatchItem, index: number) {
       achtergrond,
       color,
       bbox,
-      pixelCoords
+      pixelCoords,
+      outputFormat
     ),
   ]);
 
   const compositeImageBuffer = await imageService.createCompositeImage(
     tiles,
-    overlayedImageBuffer
+    overlayedImageBuffer,
+    outputFormat
   );
 
   return {
     index,
     image: compositeImageBuffer.toString('base64'),
+    format: outputFormat,
     adjustedZoom: adjustedZ !== z ? adjustedZ : undefined,
   };
 }
@@ -142,8 +162,18 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
 
       const results = rawResults.map((r: any) =>
         r.success
-          ? { index: r.index, image: r.image, adjustedZoom: r.adjustedZoom }
-          : { index: r.index, image: '', adjustedZoom: undefined, error: r.error }
+          ? {
+              index: r.index,
+              image: r.image,
+              format: r.format,
+              adjustedZoom: r.adjustedZoom,
+            }
+          : {
+              index: r.index,
+              image: '',
+              adjustedZoom: undefined,
+              error: r.error,
+            }
       );
 
       const successCount = rawResults.filter((r: any) => r.success).length;
