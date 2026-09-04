@@ -111,3 +111,35 @@ export const parseFormat = (format: string | undefined): OutputFormat => {
     `Invalid format "${format}". Must be one of: png, webp, avif.`
   );
 };
+
+const ACCEPT_MIME: Record<string, OutputFormat> = {
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+};
+
+/**
+ * Resolves the output format. Explicit `format` param wins; otherwise the
+ * client's `Accept` header is honored (content negotiation). Falls back to
+ * the default format.
+ */
+export const resolveFormat = (
+  format: string | undefined,
+  accept: string | undefined
+): OutputFormat => {
+  const requested = parseFormat(format);
+
+  const acceptFormat = [
+    ...(accept || '*/*').split(','),
+  ]
+    .map((part) => part.trim().split(';')[0].trim().toLowerCase())
+    .find((mime) => ACCEPT_MIME[mime]);
+
+  if (requested !== MAP_CONSTANTS.DEFAULT_FORMAT) {
+    return requested;
+  }
+  if (acceptFormat) {
+    return ACCEPT_MIME[acceptFormat];
+  }
+  return MAP_CONSTANTS.DEFAULT_FORMAT;
+};

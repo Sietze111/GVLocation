@@ -10,6 +10,7 @@ import { responseService } from '../services/responseService.js';
 import { tileCoordinateService } from '../services/tileCoordinateService.js';
 import { tileService } from '../services/tileService.js';
 import { tileCache } from '../services/tileCache.js';
+import { metrics } from '../services/metrics.js';
 import { batchSchema } from '../types/batch.js';
 import { ValidationError } from '../types/errors.js';
 import {
@@ -82,8 +83,8 @@ async function processSingleItem(item: BatchItem, index: number) {
       crsType
     );
 
-  const [tiles, overlayedImageBuffer] = await Promise.all([
-    tileService.fetchTiles(
+  const [tileMeta, overlayedImageBuffer] = await Promise.all([
+    tileService.fetchTilesWithMeta(
       tileBaseUrl,
       adjustedZ,
       tileX,
@@ -102,7 +103,7 @@ async function processSingleItem(item: BatchItem, index: number) {
   ]);
 
   const compositeImageBuffer = await imageService.createCompositeImage(
-    tiles,
+    tileMeta.tiles,
     overlayedImageBuffer,
     outputFormat
   );
@@ -111,6 +112,8 @@ async function processSingleItem(item: BatchItem, index: number) {
     index,
     image: compositeImageBuffer.toString('base64'),
     format: outputFormat,
+    cacheHit: tileMeta.sourceTiles === 0,
+    sourceTileCount: tileMeta.sourceTiles,
     adjustedZoom: adjustedZ !== z ? adjustedZ : undefined,
   };
 }
@@ -166,6 +169,8 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
               index: r.index,
               image: r.image,
               format: r.format,
+              cacheHit: r.cacheHit,
+              sourceTileCount: r.sourceTileCount,
               adjustedZoom: r.adjustedZoom,
             }
           : {
@@ -177,6 +182,13 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
       );
 
       const successCount = rawResults.filter((r: any) => r.success).length;
+      const failedCount = items.length - successCount;
+      for (let i = 0; i < successCount; i++) {
+        metrics.increment('batch_items_success_total');
+      }
+      for (let i = 0; i < failedCount; i++) {
+        metrics.increment('batch_items_failed_total');
+      }
       const cacheAfter = tileCache.getStats();
 
       return reply.send({

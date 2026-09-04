@@ -16,7 +16,7 @@ import {
   validateZ,
   validateColor,
   parseCrs,
-  parseFormat,
+  resolveFormat,
 } from '../utils/validateRD.js';
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
@@ -35,7 +35,10 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
         } = request.query;
 
         const crsType = parseCrs(crs);
-        const outputFormat = parseFormat(format);
+        const outputFormat = resolveFormat(
+          format,
+          request.headers.accept
+        );
         const { x: parsedX, y: parsedY } = validateCoordinates(
           x,
           y,
@@ -116,6 +119,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
         return responseService.sendImage(
           compositeImageBuffer,
           reply,
+          request,
           outputFormat
         );
       } catch (error) {

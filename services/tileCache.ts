@@ -5,6 +5,13 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+/**
+ * Tile cache state is stored on globalThis so that even if this module is
+ * evaluated more than once by the runtime, all instances share the same
+ * cache and counters.
+ */
+const globalKey = '__gvlocation_tileCache__';
+
 class TileCache {
   private cache = new Map<string, CacheEntry>();
   private maxSize: number;
@@ -17,13 +24,8 @@ class TileCache {
     this.ttlMs = ttlMs;
   }
 
-  private getKey(url: string): string {
-    return url;
-  }
-
   get(url: string): Buffer | null {
-    const key = this.getKey(url);
-    const entry = this.cache.get(key);
+    const entry = this.cache.get(url);
 
     if (!entry) {
       this.misses++;
@@ -31,7 +33,7 @@ class TileCache {
     }
 
     if (Date.now() > entry.expiresAt) {
-      this.cache.delete(key);
+      this.cache.delete(url);
       this.misses++;
       return null;
     }
@@ -48,7 +50,7 @@ class TileCache {
       }
     }
 
-    this.cache.set(this.getKey(url), {
+    this.cache.set(url, {
       buffer,
       expiresAt: Date.now() + this.ttlMs,
     });
@@ -69,10 +71,20 @@ class TileCache {
 
   clear(): void {
     this.cache.clear();
+    this.hits = 0;
+    this.misses = 0;
   }
 }
 
-export const tileCache = new TileCache(
-  MAP_CONSTANTS.CACHE_MAX_SIZE,
-  MAP_CONSTANTS.CACHE_TTL_MS
-);
+const getSingleton = (): TileCache => {
+  const existing = (globalThis as any)[globalKey] as TileCache | undefined;
+  if (existing) return existing;
+  const instance = new TileCache(
+    MAP_CONSTANTS.CACHE_MAX_SIZE,
+    MAP_CONSTANTS.CACHE_TTL_MS
+  );
+  (globalThis as any)[globalKey] = instance;
+  return instance;
+};
+
+export const tileCache = getSingleton();

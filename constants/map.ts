@@ -34,13 +34,18 @@ export const MAP_CONSTANTS = {
   OUTPUT_FORMATS: FORMATS,
 
   TILE_FETCH_TIMEOUT_MS: 10000,
+  TILE_FETCH_RETRIES: 2,
   CACHE_MAX_SIZE: 2000,
   CACHE_TTL_MS: 24 * 60 * 60 * 1000,
+  CACHE_CONTROL: 'public, max-age=86400',
+  CACHE_CONTROL_NO_STORE: 'no-store',
 
   BATCH_MAX_ITEMS: 100,
   BATCH_CONCURRENCY: 10,
+  WARM_MAX_ITEMS: 1000,
 
   USER_AGENT: 'GVLocation/1.0 (location-image-api)',
+  METRICS_PREFIX: 'gvlocation',
 } as const;
 
 export const TILE_URL_MAPPING = {

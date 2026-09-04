@@ -11,7 +11,9 @@ All image endpoints live under the `/tiles` namespace and support three output f
 | One location, just a marker | `GET /tiles/marker/:z/:x/:y` |
 | One location with a GeoJSON outline/area | `GET /tiles/overlay/:z/:x/:y` |
 | Many locations at once (reports) | `POST /tiles/batch` |
+| Pre-fetch tiles into the cache | `POST /tiles/warm` |
 | Server / cache health | `GET /health` |
+| Prometheus metrics | `GET /metrics` |
 
 Use **marker** when you only need to show *where* something is. Use **overlay** when you also want to draw the geometry of that something (its plot, road line, well area). Use **batch** for anything above a handful of locations — it renders concurrently and reuses the shared tile cache, cutting external traffic drastically.
 
@@ -62,10 +64,23 @@ The `x` and `y` path/body values are interpreted according to the `crs` query pa
 
 - `format` defaults to `png`.
 - WebP/AVIF are visually near-identical for map tiles but dramatically smaller — recommended for high-volume report generation to cut egress and storage cost.
+- When a `format` query param is present it always wins; otherwise the `Accept` request header is honored (e.g. `Accept: image/webp`, `Accept: image/avif`). Responses are marked `Vary: Accept` so CDNs cache each format separately.
+
+### Caching & Conditional Requests
+
+Every image response includes:
+
+- **`ETag`** — a content hash (sha1 of the tile bytes). Send it back via `If-None-Match`; if the tile is unchanged the server replies **`304 Not Modified`** with no body.
+- **`Cache-Control: public, max-age=86400`** — the tile is immutable for a given (z, x, y), safe to cache for a day.
+- **`Vary: Accept`** — so caches distinguish PNG vs WebP vs AVIF responses.
+
+This makes repeated fetches of the same tile cheap for both your app and our upstream providers.
 
 ### Instrumentation
 
 - **`Cache-Control: public, max-age=86400`** — images are immutable for a given (z, x, y), safe for downstream caching.
+- **`ETag` + `304`** — conditional requests return `304 Not Modified` when the tile is unchanged.
+- **`Vary: Accept`** — caches store PNG/WebP/AVIF versions separately.
 - **`X-Adjusted-Zoom`** — returned by the overlay endpoint when the zoom was reduced to fit the geometry inside the tile.
 
 ---
@@ -88,6 +103,59 @@ Server status, uptime and tile-cache statistics. Use as the Azure health check (
 ```
 
 ---
+
+### `GET /metrics`
+
+Prometheus-formatted metrics for monitoring and autoscaling. The output follows the OpenMetrics text format and can be scraped directly.
+
+**Metrics exposed** (prefixed `gvlocation_`):
+
+| Metric | Type | Meaning |
+| ------ | ---- | ------- |
+| `requests_total` | counter | Total HTTP requests |
+| `errors_total` | counter | Total 5xx errors |
+| `validation_errors_total` | counter | Total 400 validation errors |
+| `cache_hits_total` / `cache_misses_total` | counter | Tile cache hits / misses |
+| `tiles_fetched_total` | counter | External OSM/PDOK fetches |
+| `batch_items_success_total` / `batch_items_failed_total` | counter | Batch item outcomes |
+| `request_duration_ms` | histogram | Request latency (bucketed) |
+| `tile_fetch_duration_ms` | histogram | Upstream tile fetch latency |
+
+**Response:** `200` `text/plain`
+
+---
+
+### `POST /tiles/warm`
+
+Pre-fetches the underlying map tiles for a list of locations so that a subsequent report run hits a warm cache (much lower latency, near-zero upstream traffic). Useful right before generating a large report.
+
+**Request body:**
+
+```json
+{
+  "items": [
+    { "z": 18, "x": "153895,01042669", "y": "473352,618162258" }
+  ]
+}
+```
+
+- Accepts the same item shape as `/tiles/batch` (up to `WARM_MAX_ITEMS` = 1000 per call).
+- Concurrency is limited, so a 10,000-item list = 10 calls of 1000.
+- Warm only fetches and caches the *map tiles*; geometry/markers are not rendered (that happens on the actual batch).
+
+**Response:**
+
+```json
+{
+  "warmed": 8,
+  "cacheSize": 9
+}
+```
+
+- `warmed` — number of cache entries added.
+- `cacheSize` — total tiles now in the cache.
+
+**Responses:** `200` · `400` invalid body.
 
 ### `GET /tiles/marker/:z/:x/:y`
 
@@ -205,8 +273,8 @@ Each item accepts the union of the marker/overlay params:
 ```json
 {
   "results": [
-    { "index": 0, "image": "<base64 PNG>", "format": "png", "adjustedZoom": null },
-    { "index": 1, "image": "<base64 WebP>", "format": "webp", "adjustedZoom": 16 },
+    { "index": 0, "image": "<base64 PNG>", "format": "png", "cacheHit": false, "sourceTileCount": 4, "adjustedZoom": null },
+    { "index": 1, "image": "<base64 WebP>", "format": "webp", "cacheHit": true, "sourceTileCount": 0, "adjustedZoom": 16 },
     { "index": 2, "image": "", "error": "Invalid color" }
   ],
   "stats": {
@@ -219,8 +287,12 @@ Each item accepts the union of the marker/overlay params:
 ```
 
 - `results[index]` keeps the same order as the request.
+- `cacheHit` — whether every source tile for this item came from the cache (no upstream request).
+- `sourceTileCount` — how many external map tiles were fetched for this item (0 = fully served from cache).
 - A failed item does **not** fail the whole batch — it returns `error` and an empty `image`.
 - Decode with `Buffer.from(image, 'base64')` (Node) or `atob()` / a `data:` URI (browser).
+
+> **Recommendation:** for a 10,000-tree report, first `POST /tiles/warm` with the full list, then run the batch. You'll see `cacheHit: true` and `sourceTileCount: 0` on nearly every item, cutting upstream OSM/PDOK traffic to almost nothing for repeated reports.
 
 #### Examples
 
@@ -280,6 +352,10 @@ Mixed — a parcel overlay plus a plain marker:
 
 Map tiles are immutable for a given z/x/y. The built-in LRU cache holds up to 2,000 tiles with a 24-hour TTL. For a batch of 10,000 coordinates, many will share tiles, reducing external HTTP calls dramatically.
 
+### Tile Fetch Retry
+
+Each external tile fetch is retried up to 2 extra times with exponential backoff (200 ms, then 400 ms), so transient upstream failures don't fail a report.
+
 ### Connection Reuse
 
 HTTP keep-alive is enabled with persistent connections (50 max sockets) to the tile servers, eliminating TCP/TLS handshake overhead on repeated requests.
@@ -291,22 +367,38 @@ HTTP keep-alive is enabled with persistent connections (50 max sockets) to the t
 ### Recommended client strategy
 
 1. Request WebP or AVIF (`format`) to cut payload ~75–85%.
-2. Split reports into 100-item `/tiles/batch` calls, 10 workers each.
-3. Reuse the base64 result directly: store it, embed as a `data:` URI, or decode to a file.
+2. Before a big run, `POST /tiles/warm` the full location list so the cache is hot.
+3. Split reports into 100-item `/tiles/batch` calls, 10 workers each.
+4. Track `sourceTileCount`/`cacheHit` per item to confirm upstream traffic is minimized.
+5. Reuse the base64 result directly: store it, embed as a `data:` URI, or decode to a file.
 
 ## Error Responses
 
-| Status | Description                                  |
-| ------ | -------------------------------------------- |
-| 400    | Invalid coordinates, zoom, GeoJSON, or color |
-| 429    | Rate limit exceeded                          |
-| 500    | Server error or tile fetch failure           |
+Errors use a consistent JSON envelope:
+
+```json
+{
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "Invalid zoom level"
+  }
+}
+```
+
+| HTTP Status | `code`          | Meaning                                    |
+| ----------- | --------------- | ------------------------------------------ |
+| 400         | `BAD_REQUEST`   | Invalid coordinates, zoom, GeoJSON, or color |
+| 404         | `NOT_FOUND`     | Route not found / unknown format           |
+| 429         | `RATE_LIMITED`  | Rate limit exceeded                        |
+| 500         | `INTERNAL_ERROR`| Server error or tile fetch failure         |
 
 Batch items that fail return the error per-item; the overall request still returns `200` with a `failed` count in `stats`.
 
 ## Rate Limiting
 
-Enabled by default (1,000 requests / 60 s per key). The key is the `X-Api-Key` header when present, otherwise the client IP. Disable with `RATE_LIMIT_ENABLED=false` or tune via `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS`.
+Enabled by default (1,000 requests / 60 s per key). The key is the `X-Api-Key` header when present, otherwise the client IP. Exceeding the limit returns `429` with the `RATE_LIMITED` envelope above. Disable with `RATE_LIMIT_ENABLED=false` or tune via `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS`.
+
+> **For large reports:** a 10,000-item job is 100 `/tiles/batch` calls (100 items each). At the default 1,000/60s this fits comfortably in a minute, but raise `RATE_LIMIT_MAX` (e.g. to 5000) in production if you also have other traffic.
 
 ## CORS
 
@@ -321,6 +413,7 @@ This API is designed for Azure App Service deployment:
 - **Scale out**: 2+ instances for high availability; the tile cache is per-instance
 - **Environment variables**: Configure `PORT`, `NODE_ENV=production`, `RATE_LIMIT_MAX` in App Settings
 - **Health check path**: `/health`
+- **Monitoring**: scrape `/metrics` (Prometheus) to observe cache hit-rate, upstream traffic and latency; the `tiles_fetched_total` metric is a direct measure of external OSM/PDOK egress.
 - **OSM tile usage policy**: The API sends a `User-Agent: GVLocation/1.0` header as required by OpenStreetMap. Ensure your deployment identifies itself properly.
 
 ### Example Azure CLI deployment

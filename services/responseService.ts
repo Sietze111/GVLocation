@@ -1,6 +1,9 @@
-import { FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { createHash } from 'crypto';
 import { MAP_CONSTANTS, OutputFormat } from '../constants/map.js';
 import { isTileError, isValidationError } from '../utils/error.js';
+import { sendError } from '../utils/errorEnvelope.js';
+import { metrics } from './metrics.js';
 
 const MIME_TYPES: Record<OutputFormat, string> = {
   png: 'image/png',
@@ -8,11 +11,9 @@ const MIME_TYPES: Record<OutputFormat, string> = {
   avif: 'image/avif',
 };
 
-// Cache-Control differs per format: consumers must vary on Accept.
-const CACHE_CONTROL_BY_FORMAT: Record<OutputFormat, string> = {
-  png: 'public, max-age=86400',
-  webp: 'public, max-age=86400',
-  avif: 'public, max-age=86400',
+const etagFromBuffer = (buffer: Buffer): string => {
+  const hash = createHash('sha1').update(buffer).digest('base64');
+  return `"${hash}"`;
 };
 
 export const responseService = {
@@ -20,24 +21,45 @@ export const responseService = {
     if (reply.sent) return;
 
     if (isValidationError(error)) {
-      return reply.code(400).send({ error: error.message });
+      metrics.increment('validation_errors_total');
+      return sendError(
+        reply,
+        400,
+        error.code,
+        error.message
+      );
     }
 
     if (isTileError(error)) {
-      return reply.code(error.statusCode).send({ error: error.message });
+      return sendError(reply, error.statusCode, error.code, error.message);
     }
 
-    return reply.code(500).send({ error: 'Internal server error' });
+    return sendError(reply, 500, 'INTERNAL_ERROR', 'Internal server error');
   },
 
   sendImage(
     buffer: Buffer,
     reply: FastifyReply,
+    request: FastifyRequest,
     format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
   ) {
+    const etag = etagFromBuffer(buffer);
+    const ifNoneMatch = request.headers['if-none-match'];
+
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return reply
+        .code(304)
+        .header('ETag', etag)
+        .header('Cache-Control', MAP_CONSTANTS.CACHE_CONTROL)
+        .header('Vary', 'Accept')
+        .send();
+    }
+
     return reply
       .type(MIME_TYPES[format])
-      .header('Cache-Control', CACHE_CONTROL_BY_FORMAT[format])
+      .header('ETag', etag)
+      .header('Cache-Control', MAP_CONSTANTS.CACHE_CONTROL)
+      .header('Vary', 'Accept')
       .send(buffer);
   },
 };
