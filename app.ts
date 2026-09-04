@@ -19,18 +19,32 @@ export function build() {
     logger: {
       level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
     },
-    bodyLimit: 1048576,
+    bodyLimit: 10 * 1024 * 1024,
+    connectionTimeout: 30000,
+    keepAliveTimeout: 30000,
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   server.register(Cors, {
     origin: process.env.CORS_ORIGIN || true,
-    methods: ['GET'],
+    methods: ['GET', 'POST'],
   });
 
-  server.register(RateLimit, {
-    max: Number(process.env.RATE_LIMIT_MAX) || 100,
-    timeWindow: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
-  });
+  const rateLimitEnabled =
+    process.env.RATE_LIMIT_ENABLED !== 'false';
+  if (rateLimitEnabled) {
+    server.register(RateLimit, {
+      max: Number(process.env.RATE_LIMIT_MAX) || 1000,
+      timeWindow: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
+      keyGenerator: (req) => {
+        return (
+          (req.headers['x-api-key'] as string) ||
+          req.ip ||
+          req.socket.remoteAddress ||
+          'unknown'
+        );
+      },
+    });
+  }
 
   if (!isProduction) {
     server.register(Swagger);

@@ -9,6 +9,8 @@ import type {
   WGS84Coordinates,
 } from '../types/map.js';
 import { coordinateService } from './coordinateService.js';
+import { tileCache } from './tileCache.js';
+import { httpsAgent } from '../utils/httpAgent.js';
 
 interface TileCalculationResult {
   tileCoords: TileCoordinates;
@@ -16,7 +18,13 @@ interface TileCalculationResult {
   tileBuffer: Buffer;
 }
 
-const AXIOS_TIMEOUT = { timeout: MAP_CONSTANTS.TILE_FETCH_TIMEOUT_MS };
+const AXIOS_OPTIONS = {
+  timeout: MAP_CONSTANTS.TILE_FETCH_TIMEOUT_MS,
+  httpsAgent,
+  headers: {
+    'User-Agent': MAP_CONSTANTS.USER_AGENT,
+  },
+};
 
 export const tileService = {
   calculateTileCoordinates(
@@ -49,6 +57,19 @@ export const tileService = {
     };
   },
 
+  async fetchSingleTile(url: string): Promise<Buffer> {
+    const cached = tileCache.get(url);
+    if (cached) return cached;
+
+    const response: AxiosResponse<Buffer> = await axios.get(url, {
+      responseType: 'arraybuffer',
+      ...AXIOS_OPTIONS,
+    });
+    const buffer = Buffer.from(response.data);
+    tileCache.set(url, buffer);
+    return buffer;
+  },
+
   async fetchTiles(
     tileBaseUrl: string,
     z: number,
@@ -57,25 +78,18 @@ export const tileService = {
     pixelX: number,
     pixelY: number
   ): Promise<OverlayOptions[]> {
-    const tilePromises: Promise<AxiosResponse<Buffer>>[] = Array.from(
-      { length: 9 },
-      (_, i) => {
-        const dx = Math.floor(i / 3) - 1;
-        const dy = (i % 3) - 1;
-        const currTileX = tileX + dx;
-        const currTileY = tileY + dy;
-        const url = `${tileBaseUrl}/${z}/${currTileX}/${currTileY}.png`;
-        return axios.get(url, {
-          responseType: 'arraybuffer',
-          ...AXIOS_TIMEOUT,
-        });
-      }
+    const urls: string[] = [];
+    for (let i = 0; i < 9; i++) {
+      const dx = Math.floor(i / 3) - 1;
+      const dy = (i % 3) - 1;
+      urls.push(`${tileBaseUrl}/${z}/${tileX + dx}/${tileY + dy}.png`);
+    }
+
+    const tileBuffers = await Promise.all(
+      urls.map((url) => tileService.fetchSingleTile(url))
     );
 
-    const tileResponses = await Promise.all(tilePromises);
-
-    return tileResponses.map((response, i) => {
-      const { data: imageBuffer } = response;
+    return tileBuffers.map((imageBuffer, i) => {
       const dx = Math.floor(i / 3) - 1;
       const dy = (i % 3) - 1;
       const offsetX =
@@ -120,11 +134,6 @@ export const tileService = {
 
   async fetchTileImage(z: number, x: number, y: number): Promise<Buffer> {
     const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-    const { data: tileBuffer } = await axios.get(tileUrl, {
-      responseType: 'arraybuffer',
-      responseEncoding: 'binary',
-      ...AXIOS_TIMEOUT,
-    });
-    return Buffer.from(tileBuffer, 'binary');
+    return tileService.fetchSingleTile(tileUrl);
   },
 };

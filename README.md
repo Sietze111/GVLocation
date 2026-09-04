@@ -1,12 +1,12 @@
 # GVLocation - Location Image Generation API
 
-This API generates location-based map images with optional GeoJSON overlays and markers. It accepts Dutch RD (Rijksdriehoek) coordinates and returns 256x256 PNG map tiles.
+Generates 256x256 PNG map tiles from Dutch RD (Rijksdriehoek) coordinates with optional GeoJSON overlays. Built for high-volume batch processing.
 
 ## Quick Start
 
 ```bash
 npm install
-npm start        # Production-like (tsx)
+npm start        # Production (tsx)
 npm run dev      # Development with auto-reload
 ```
 
@@ -16,91 +16,128 @@ npm run dev      # Development with auto-reload
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
 | `NODE_ENV` | `development` | Set to `production` to disable Swagger UI |
-| `LOG_LEVEL` | `info` (prod) / `debug` (dev) | Fastify log level |
-| `RATE_LIMIT_MAX` | `100` | Max requests per time window |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window in milliseconds |
-| `CORS_ORIGIN` | `true` | CORS origin configuration |
+| `LOG_LEVEL` | `info` / `debug` | Fastify log level |
+| `RATE_LIMIT_ENABLED` | `true` | Set to `false` to disable rate limiting |
+| `RATE_LIMIT_MAX` | `1000` | Max requests per time window per key |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
+| `CORS_ORIGIN` | `true` | CORS origin |
 
 ## Endpoints
 
-### Health Check (`GET /health`)
+### `GET /health`
 
-Returns server status and configuration.
+Returns server status, uptime, and cache statistics.
+
+### `GET /simple/:z/:x/:y`
+
+Single coordinate tile with red marker.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `z` | number | Zoom level (8-19) |
+| `x` | string | RD X coordinate (0-300000) |
+| `y` | string | RD Y coordinate (300000-650000) |
+
+Supports comma and dot decimal separators (e.g. `153895,01042669` or `153895.01042669`).
+
+### `GET /:z/:x/:y`
+
+Single coordinate tile with GeoJSON overlay.
+
+| Query | Type | Description |
+|-------|------|-------------|
+| `geojson` | string | GeoJSON geometry (Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon) |
+| `achtergrond` | string | `osm` (default) or `luchtfoto`/`pdok` (PDOK aerial) |
+| `kleur` | string | CSS color (default: `red`) |
+
+Returns `X-Adjusted-Zoom` header when zoom was reduced to fit geometry.
+
+### `POST /batch`
+
+Process multiple coordinates in a single request. Designed for bulk report generation.
+
+**Request body:**
+```json
+{
+  "items": [
+    {
+      "z": 18,
+      "x": "153895,01042669",
+      "y": "473352,618162258"
+    },
+    {
+      "z": 18,
+      "x": "154000,5",
+      "y": "473400,2",
+      "geojson": "{\"type\":\"Point\",\"coordinates\":[5.371,52.248]}",
+      "kleur": "blue",
+      "achtergrond": "luchtfoto"
+    }
+  ]
+}
+```
+
+- `items`: Array of 1-100 tile requests. Each item has the same params as the single endpoints.
+- All items are processed concurrently (10 workers) with shared tile cache.
+- Failed items return an error message without failing the whole batch.
 
 **Response:**
 ```json
 {
-  "status": "ok",
-  "uptime": 3600,
-  "zoom": { "min": 8, "max": 19 }
+  "results": [
+    { "index": 0, "image": "<base64 PNG>", "adjustedZoom": null },
+    { "index": 1, "image": "<base64 PNG>", "adjustedZoom": 16 }
+  ],
+  "stats": {
+    "total": 2,
+    "success": 2,
+    "failed": 0,
+    "cacheStats": { "size": 18, "hitRate": 44 }
+  }
 }
 ```
 
-### Simple Location Marker (`GET /simple/:z/:x/:y`)
+## Performance
 
-Generates a map tile with a red marker at the specified coordinates.
+### Tile Cache
 
-**Path Parameters:**
-- `z` (number, required) - Zoom level (8-19). Example: `18`
-- `x` (string, required) - X coordinate in RD format (0-300000). Supports dot and comma decimal separators. Example: `153895,01042669`
-- `y` (string, required) - Y coordinate in RD format (300000-650000). Supports dot and comma decimal separators. Example: `473352,618162258`
+Map tiles are immutable for a given z/x/y. The built-in LRU cache holds up to 2,000 tiles with a 24-hour TTL. For a batch of 10,000 coordinates, many will share tiles, reducing external HTTP calls dramatically.
 
-**Response:** `image/png` (256x256 PNG with red marker)
+### Connection Reuse
 
-**Example:**
-```
-/simple/18/153895,01042669/473352,618162258
-```
+HTTP keep-alive is enabled with persistent connections (50 max sockets) to the tile servers, eliminating TCP/TLS handshake overhead on repeated requests.
 
-### Complex Location Visualization (`GET /:z/:x/:y`)
+### Batch Processing
 
-Generates a map tile with support for GeoJSON overlays and custom styling.
-
-**Path Parameters:** Same as Simple endpoint.
-
-**Query Parameters:**
-- `geojson` (string, optional) - GeoJSON geometry string. Supported types: Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon.
-- `achtergrond` (string, optional) - Background map type. Options: `osm` (default), `luchtfoto`, `pdok` (both PDOK aerial photography).
-- `kleur` (string, optional) - CSS color for the GeoJSON overlay. Default: `red`. Must be a valid CSS color.
-
-**Response:** `image/png` (256x256 PNG with overlays)
-
-**Headers:**
-- `X-Adjusted-Zoom` - Present when the zoom level was automatically reduced to fit the GeoJSON geometry.
-
-**Examples:**
-
-Polygon overlay:
-```
-/18/153895,01042669/473352,618162258?geojson={"type":"Polygon","coordinates":[[[5.37112,52.2482],[5.37100,52.2482],[5.37093,52.2482],[5.37100,52.2481],[5.37112,52.2482]]]}
-```
-
-Point with custom color and aerial background:
-```
-/18/153895,01042669/473352,618162258?geojson={"type":"Point","coordinates":[5.37112,52.2482]}&kleur=blue&achtergrond=luchtfoto
-```
-
-Geometry larger than tile (auto-zoom adjustment):
-```
-/19/154770,468190803/474184,251336475?geojson={"type":"Polygon","coordinates":[...]}
-```
+The `/batch` endpoint processes up to 100 items per request with 10 concurrent workers. For 10,000 trees, split into 100 requests of 100 items each.
 
 ## Error Responses
 
 | Status | Description |
 |--------|-------------|
-| 400 | Invalid coordinates, zoom level, GeoJSON, or color value |
+| 400 | Invalid coordinates, zoom, GeoJSON, or color |
 | 429 | Rate limit exceeded |
-| 500 | Server-side processing error or tile fetch failure |
+| 500 | Server error or tile fetch failure |
 
-Error format:
-```json
-{ "error": "Description of the error" }
+## Azure Deployment
+
+This API is designed for Azure App Service deployment:
+
+- **Runtime**: Node.js 20+ on Linux
+- **Plan**: At least B2 (4 vCPU, 8 GB RAM) for concurrent image processing
+- **Scale out**: 2+ instances for high availability; the tile cache is per-instance
+- **Environment variables**: Configure `PORT`, `NODE_ENV=production`, `RATE_LIMIT_MAX` in App Settings
+- **Health check path**: `/health`
+- **OSM tile usage policy**: The API sends a `User-Agent: GVLocation/1.0` header as required by OpenStreetMap. Ensure your deployment identifies itself properly.
+
+### Example Azure CLI deployment
+
+```bash
+az webapp create --name gvlocation --resource-group myRG --plan myPlan --runtime "NODE:20LTS"
+az webapp config appsettings set --name gvlocation --resource-group myRG \
+  --settings NODE_ENV=production PORT=8080 RATE_LIMIT_MAX=5000
+az webapp deployment source config-local-git --name gvlocation --resource-group myRG
 ```
-
-## Rate Limiting
-
-By default, the API allows 100 requests per minute per IP. Configure via environment variables `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS`.
 
 ## License
 

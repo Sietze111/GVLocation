@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import { MAP_CONSTANTS } from '../constants/map.js';
+import { tileCache } from '../services/tileCache.js';
 
 const startTime = Date.now();
 
@@ -37,17 +38,26 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
               min: Type.Number(),
               max: Type.Number(),
             }),
+            cache: Type.Object({
+              size: Type.Number(),
+              hitRate: Type.Number(),
+            }),
           }),
         },
       },
     },
     () => {
+      const stats = tileCache.getStats();
       return {
         status: 'ok',
         uptime: Math.floor((Date.now() - startTime) / 1000),
         zoom: {
           min: MAP_CONSTANTS.MIN_ZOOM,
           max: MAP_CONSTANTS.MAX_ZOOM,
+        },
+        cache: {
+          size: stats.size,
+          hitRate: stats.hitRate,
         },
       };
     }

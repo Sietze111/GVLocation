@@ -27,6 +27,13 @@ export const MAP_CONSTANTS = {
   DEFAULT_TILE_KEY: 'osm' as TileKey,
 
   TILE_FETCH_TIMEOUT_MS: 10000,
+  CACHE_MAX_SIZE: 2000,
+  CACHE_TTL_MS: 24 * 60 * 60 * 1000,
+
+  BATCH_MAX_ITEMS: 100,
+  BATCH_CONCURRENCY: 10,
+
+  USER_AGENT: 'GVLocation/1.0 (location-image-api)',
 } as const;
 
 export const TILE_URL_MAPPING = {
