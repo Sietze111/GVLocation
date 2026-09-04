@@ -1,17 +1,27 @@
 import tilebelt from '@mapbox/tilebelt';
-import { coordinateService } from './coordinateService';
-import { checkGeoJSONFit } from './geojsonFitService';
-import { tileService } from './tileService';
+import { coordinateService } from './coordinateService.js';
+import { checkGeoJSONFit } from './geojsonFitService.js';
+import { tileService } from './tileService.js';
+
+interface ParsedGeoJSON {
+  type: string;
+  coordinates: unknown;
+}
 
 export const tileCoordinateService = {
-  async calculateTileData(x: number, y: number, z: number, geojson?: string) {
+  async calculateTileData(
+    x: number,
+    y: number,
+    z: number,
+    geojson?: ParsedGeoJSON
+  ) {
     const { longitude: lon, latitude: lat } = coordinateService.rdToWgs84({
       x,
       y,
     });
 
     if (geojson !== undefined) {
-      z = await checkGeoJSONFit(lon, lat, z, geojson);
+      z = checkGeoJSONFit(lon, lat, z, geojson);
     }
 
     const [tileX, tileY] = tilebelt.pointToTile(lon, lat, z) as [

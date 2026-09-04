@@ -1,20 +1,22 @@
 import tilebelt from '@mapbox/tilebelt';
 import axios, { AxiosResponse } from 'axios';
 import { OverlayOptions } from 'sharp';
-import { MAP_CONSTANTS } from '../constants/map';
-import { TileError } from '../types/errors';
+import { MAP_CONSTANTS } from '../constants/map.js';
+import { TileError } from '../types/errors.js';
 import type {
   PixelCoordinates,
   TileCoordinates,
   WGS84Coordinates,
-} from '../types/map';
-import { coordinateService } from './coordinateService';
+} from '../types/map.js';
+import { coordinateService } from './coordinateService.js';
 
 interface TileCalculationResult {
   tileCoords: TileCoordinates;
   pixelCoords: PixelCoordinates;
   tileBuffer: Buffer;
 }
+
+const AXIOS_TIMEOUT = { timeout: MAP_CONSTANTS.TILE_FETCH_TIMEOUT_MS };
 
 export const tileService = {
   calculateTileCoordinates(
@@ -55,8 +57,7 @@ export const tileService = {
     pixelX: number,
     pixelY: number
   ): Promise<OverlayOptions[]> {
-    // Fetch tiles
-    const tilePromises: Promise<AxiosResponse<any>>[] = Array.from(
+    const tilePromises: Promise<AxiosResponse<Buffer>>[] = Array.from(
       { length: 9 },
       (_, i) => {
         const dx = Math.floor(i / 3) - 1;
@@ -64,11 +65,14 @@ export const tileService = {
         const currTileX = tileX + dx;
         const currTileY = tileY + dy;
         const url = `${tileBaseUrl}/${z}/${currTileX}/${currTileY}.png`;
-        return axios.get(url, { responseType: 'arraybuffer' });
+        return axios.get(url, {
+          responseType: 'arraybuffer',
+          ...AXIOS_TIMEOUT,
+        });
       }
     );
 
-    const tileResponses: AxiosResponse<any>[] = await Promise.all(tilePromises);
+    const tileResponses = await Promise.all(tilePromises);
 
     return tileResponses.map((response, i) => {
       const { data: imageBuffer } = response;
@@ -89,13 +93,13 @@ export const tileService = {
   ): Promise<TileCalculationResult> {
     try {
       const wgs84Coords = coordinateService.rdToWgs84({ x, y });
-      const tileCoords = this.calculateTileCoordinates(wgs84Coords, z);
-      const pixelCoords = this.calculatePixelCoordinates(
+      const tileCoords = tileService.calculateTileCoordinates(wgs84Coords, z);
+      const pixelCoords = tileService.calculatePixelCoordinates(
         wgs84Coords,
         tileCoords
       );
 
-      const tileBuffer = await this.fetchTileImage(
+      const tileBuffer = await tileService.fetchTileImage(
         z,
         tileCoords.x,
         tileCoords.y
@@ -119,6 +123,7 @@ export const tileService = {
     const { data: tileBuffer } = await axios.get(tileUrl, {
       responseType: 'arraybuffer',
       responseEncoding: 'binary',
+      ...AXIOS_TIMEOUT,
     });
     return Buffer.from(tileBuffer, 'binary');
   },

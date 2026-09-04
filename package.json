@@ -1,14 +1,18 @@
 {
   "name": "gvlocation",
   "private": true,
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Location image generation API for Dutch RD coordinates with GeoJSON overlays",
+  "main": "build/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "tsx server.ts",
-    "dev": "nodemon --watch server.ts",
-    "build": "del /s /q build && tsc",
+    "dev": "nodemon --watch server.ts --watch routes --watch services --watch utils --watch constants --watch types --ext ts --exec tsx server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Sietze Soet <sietzesoet@gmail.com>",
@@ -16,24 +20,25 @@
   "devDependencies": {
     "@types/mapbox__tilebelt": "^1.0.4",
     "@types/node": "^22.10.1",
-    "fastify-tsconfig": "^1.0.1",
+    "@types/proj4": "^2.5.5",
     "nodemon": "^3.1.7",
     "tsx": "^4.7.3",
-    "typescript": "^4.9.5"
+    "typescript": "^5.7.0"
   },
   "dependencies": {
-    "@fastify/autoload": "^5.7.1",
-    "@fastify/swagger": "^8.3.1",
-    "@fastify/swagger-ui": "^1.4.0",
-    "@fastify/type-provider-typebox": "^2.4.0",
+    "@fastify/autoload": "^6.5.0",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@fastify/type-provider-typebox": "^6.1.0",
     "@mapbox/tilebelt": "^1.0.2",
-    "@sinclair/typebox": "^0.25.24",
+    "@sinclair/typebox": "^0.34.52",
     "@turf/bbox-polygon": "^7.1.0",
     "@turf/boolean-within": "^7.1.0",
     "@turf/helpers": "^7.1.0",
-    "@types/proj4": "^2.5.5",
     "axios": "^1.6.8",
-    "fastify": "^4.13.0",
+    "fastify": "^5.12.3",
     "proj4": "^2.11.0",
     "sharp": "^0.33.3"
   }

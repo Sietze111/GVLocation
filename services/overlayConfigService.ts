@@ -1,16 +1,16 @@
-import { TILE_CONSTANTS } from '../constants/tileMap';
+import { MAP_CONSTANTS } from '../constants/map.js';
 
 export const overlayConfigService = {
   getAttributionConfig(achtergrond: string | undefined) {
     const attribution =
       achtergrond === 'luchtfoto'
-        ? TILE_CONSTANTS.PDOK_ATTRIBUTION
-        : TILE_CONSTANTS.OSM_ATTRIBUTION;
+        ? MAP_CONSTANTS.PDOK_ATTRIBUTION
+        : MAP_CONSTANTS.OSM_ATTRIBUTION;
 
     const xValue =
-      attribution === TILE_CONSTANTS.PDOK_ATTRIBUTION
-        ? TILE_CONSTANTS.ATTRIBUTION_X_PDOK
-        : TILE_CONSTANTS.ATTRIBUTION_X_OSM;
+      attribution === MAP_CONSTANTS.PDOK_ATTRIBUTION
+        ? MAP_CONSTANTS.ATTRIBUTION_X_PDOK
+        : MAP_CONSTANTS.ATTRIBUTION_X_OSM;
 
     return { attribution, xValue };
   },

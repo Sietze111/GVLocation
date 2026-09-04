@@ -13,7 +13,7 @@ export const complexTileSchema = {
   }),
   response: {
     200: {
-      type: 'string',
+      type: 'string' as const,
     },
   },
 };

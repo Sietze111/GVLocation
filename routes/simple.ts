@@ -1,18 +1,10 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-
-// constants
-import { MAP_CONSTANTS } from '../constants/map';
-
-// types
-import { tileSchema } from '../types/map';
-
-// services
-import { responseService } from '../services/responseService';
-import { tileService } from '../services/tileService';
-
-// utils
-import { createMarkerOverlay } from '../utils/overlay';
-import { validateRdCoords, validateZ } from '../utils/validateRD';
+import { MAP_CONSTANTS } from '../constants/map.js';
+import { tileSchema } from '../types/map.js';
+import { responseService } from '../services/responseService.js';
+import { tileService } from '../services/tileService.js';
+import { imageService } from '../services/imageService.js';
+import { validateRdCoords, validateZ } from '../utils/validateRD.js';
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.get(
@@ -30,12 +22,12 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           pixelCoords: { x: pixelX, y: pixelY },
         } = await tileService.calculateTileData(parsedX, parsedY, z);
 
-        const overlayedImageBuffer = await createMarkerOverlay(
+        const overlayedImageBuffer = await imageService.createMarkerOverlay(
           tileBuffer,
           pixelX,
           pixelY,
           MAP_CONSTANTS.MARKER_RADIUS,
-          MAP_CONSTANTS.ATTRIBUTION
+          MAP_CONSTANTS.OSM_ATTRIBUTION
         );
 
         return responseService.sendImage(overlayedImageBuffer, reply);

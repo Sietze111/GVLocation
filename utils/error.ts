@@ -1,12 +1,11 @@
 import {
-  FastifyError,
   FastifyInstance,
   FastifyPluginAsync,
   FastifyPluginOptions,
-  FastifyReply,
   FastifyRequest,
+  FastifyReply,
 } from 'fastify';
-import { TileError, ValidationError } from '../types/errors';
+import { TileError, ValidationError } from '../types/errors.js';
 
 const error: FastifyPluginAsync = async (
   fastify: FastifyInstance,
@@ -16,14 +15,10 @@ const error: FastifyPluginAsync = async (
     'onError',
     async (
       request: FastifyRequest,
-      reply: FastifyReply,
-      error: FastifyError
+      _reply: FastifyReply,
+      err: Error
     ) => {
-      // Log the error
-      console.error('Error:', error);
-
-      // Send a generic error response
-      reply.status(500).send({ error: 'Internal Server Error' });
+      request.log.error({ err }, 'Unhandled error');
     }
   );
 };

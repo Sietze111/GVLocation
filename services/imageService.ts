@@ -1,6 +1,8 @@
 import type { OverlayOptions } from 'sharp';
 import sharp from 'sharp';
-import { TILE_CONSTANTS } from '../constants/tileMap';
+import { MAP_CONSTANTS } from '../constants/map.js';
+
+const T = MAP_CONSTANTS.TILE_SIZE;
 
 export const imageService = {
   async createGeoJSONOverlay(
@@ -11,8 +13,8 @@ export const imageService = {
   ): Promise<Buffer> {
     return sharp({
       create: {
-        width: TILE_CONSTANTS.TILE_SIZE,
-        height: TILE_CONSTANTS.TILE_SIZE,
+        width: T,
+        height: T,
         channels: 4,
         background: { r: 0, g: 0, b: 0, alpha: 0 },
       },
@@ -20,16 +22,10 @@ export const imageService = {
       .composite([
         {
           input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${
-              TILE_CONSTANTS.TILE_SIZE
-            }" height="${TILE_CONSTANTS.TILE_SIZE}">
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
               <path d="${pathString}" stroke="${kleur}" fill="${kleur}" fill-opacity="0.5" stroke-width="1" />
-              <rect x="${xValue}" y="${
-              TILE_CONSTANTS.ATTRIBUTION_Y
-            }" width="200" height="200" fill="black" opacity="0.5"/>
-              <text x="${TILE_CONSTANTS.TILE_SIZE - 5}" y="${
-              TILE_CONSTANTS.TILE_SIZE - 5
-            }" fill="white" font-family="Arial" font-size="9" text-anchor="end">
+              <rect x="${xValue}" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="black" opacity="0.5"/>
+              <text x="${T - 5}" y="${T - 5}" fill="white" font-family="Arial" font-size="9" text-anchor="end">
                 ${attribution}
               </text>
             </svg>`
@@ -62,7 +58,7 @@ export const imageService = {
       .composite([
         {
           input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
               <circle cx="${pixelX}" cy="${pixelY}" r="${markerRadius}" stroke="red" fill="rgba(255, 0, 0, 0.5)" fill-opacity="0.8" stroke-width="1.5" />
             </svg>`
           ),
@@ -72,8 +68,8 @@ export const imageService = {
         },
         {
           input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-              <rect x="170" y="240" width="200" height="200" fill="gray" opacity="0.2"/>
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${T}" height="${T}">
+              <rect x="170" y="${MAP_CONSTANTS.ATTRIBUTION_Y}" width="200" height="200" fill="gray" opacity="0.2"/>
               <text x="250" y="251" fill="black" font-family="Arial" font-size="9" text-anchor="end">
                 ${attribution}
               </text>
@@ -96,8 +92,8 @@ export const imageService = {
   ): Promise<Buffer> {
     return sharp({
       create: {
-        width: TILE_CONSTANTS.TILE_SIZE,
-        height: TILE_CONSTANTS.TILE_SIZE,
+        width: T,
+        height: T,
         channels: 4,
         background: { r: 0, g: 0, b: 0, alpha: 0 },
       },

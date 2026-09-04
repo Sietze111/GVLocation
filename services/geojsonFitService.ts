@@ -1,56 +1,66 @@
 import tilebelt from '@mapbox/tilebelt';
-import { TILE_CONSTANTS } from '../constants/tileMap';
-import { geojsonFitsOnTile } from './geojsonService';
+import { MAP_CONSTANTS } from '../constants/map.js';
+import { geojsonFitsOnTile } from './geojsonService.js';
 
-export const checkGeoJSONFit = async (
+interface ParsedGeoJSON {
+  type: string;
+  coordinates: unknown;
+}
+
+export const checkGeoJSONFit = (
   lon: number,
   lat: number,
   z: number,
-  geojson: string
-): Promise<number> => {
+  geojson: ParsedGeoJSON
+): number => {
   let tilesFitGeojson = false;
+  const { type, coordinates } = geojson;
 
-  while (!tilesFitGeojson && z >= TILE_CONSTANTS.MIN_ZOOM) {
-    let [tileX, tileY] = tilebelt.pointToTile(lon, lat, z) as [number, number];
-    let tileBbox = tilebelt.tileToBBOX([tileX, tileY, z]) as [
+  while (!tilesFitGeojson && z >= MAP_CONSTANTS.MIN_ZOOM) {
+    const [tileX, tileY] = tilebelt.pointToTile(lon, lat, z) as [
+      number,
+      number
+    ];
+    const tileBbox = tilebelt.tileToBBOX([tileX, tileY, z]) as [
       number,
       number,
       number,
       number
     ];
 
-    let pixelX = Math.round(
+    const pixelX = Math.round(
       ((lon - tileBbox[0]) / (tileBbox[2] - tileBbox[0])) *
-        TILE_CONSTANTS.TILE_SIZE -
-        TILE_CONSTANTS.MARKER_OFFSET_X
+        MAP_CONSTANTS.TILE_SIZE -
+        MAP_CONSTANTS.MARKER_OFFSET_X
     );
-    let pixelY = Math.round(
+    const pixelY = Math.round(
       ((tileBbox[3] - lat) / (tileBbox[3] - tileBbox[1])) *
-        TILE_CONSTANTS.TILE_SIZE -
-        TILE_CONSTANTS.MARKER_OFFSET_Y
+        MAP_CONSTANTS.TILE_SIZE -
+        MAP_CONSTANTS.MARKER_OFFSET_Y
     );
 
-    let pixelWidth = (tileBbox[2] - tileBbox[0]) / TILE_CONSTANTS.TILE_SIZE;
-    let pixelHeight = (tileBbox[3] - tileBbox[1]) / TILE_CONSTANTS.TILE_SIZE;
+    const pixelWidth = (tileBbox[2] - tileBbox[0]) / MAP_CONSTANTS.TILE_SIZE;
+    const pixelHeight = (tileBbox[3] - tileBbox[1]) / MAP_CONSTANTS.TILE_SIZE;
 
-    let offsetXDegrees = pixelX * pixelWidth;
-    let offsetYDegrees = pixelY * pixelHeight;
-    let bboxWithOffset: [number, number, number, number] = [
+    const offsetXDegrees = pixelX * pixelWidth;
+    const offsetYDegrees = pixelY * pixelHeight;
+    const bboxWithOffset: [number, number, number, number] = [
       tileBbox[0] + offsetXDegrees,
       tileBbox[1] - offsetYDegrees,
       tileBbox[2] + offsetXDegrees,
       tileBbox[3] - offsetYDegrees,
     ];
 
-    const object = JSON.parse(geojson);
-    const { type, coordinates } = object;
-
-    tilesFitGeojson = geojsonFitsOnTile(coordinates, bboxWithOffset, type);
+    tilesFitGeojson = geojsonFitsOnTile(
+      coordinates as Parameters<typeof geojsonFitsOnTile>[0],
+      bboxWithOffset,
+      type
+    );
 
     if (!tilesFitGeojson) {
       z--;
     }
   }
 
-  return z; // Return the adjusted zoom level
+  return z;
 };

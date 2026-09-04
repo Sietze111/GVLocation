@@ -1,34 +1,34 @@
-export type Coordinates = [number, number];
+export type GeoJSONCoordinate = [number, number];
 export type BoundingBox = [number, number, number, number];
 
 export interface PointGeometry {
   type: 'Point';
-  coordinates: Coordinates;
+  coordinates: GeoJSONCoordinate;
 }
 
 export interface MultiPointGeometry {
   type: 'MultiPoint';
-  coordinates: Coordinates[];
+  coordinates: GeoJSONCoordinate[];
 }
 
 export interface LineStringGeometry {
   type: 'LineString';
-  coordinates: Coordinates[];
+  coordinates: GeoJSONCoordinate[];
 }
 
 export interface MultiLineStringGeometry {
   type: 'MultiLineString';
-  coordinates: Coordinates[][];
+  coordinates: GeoJSONCoordinate[][];
 }
 
 export interface PolygonGeometry {
   type: 'Polygon';
-  coordinates: Coordinates[][];
+  coordinates: GeoJSONCoordinate[][];
 }
 
 export interface MultiPolygonGeometry {
   type: 'MultiPolygon';
-  coordinates: Coordinates[][][];
+  coordinates: GeoJSONCoordinate[][][];
 }
 
 export type GeoJSONGeometry =
@@ -38,5 +38,3 @@ export type GeoJSONGeometry =
   | MultiLineStringGeometry
   | PolygonGeometry
   | MultiPolygonGeometry;
-
-export type Geometry = GeoJSONGeometry;

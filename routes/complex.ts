@@ -1,16 +1,21 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import {
-  TILE_CONSTANTS,
+  MAP_CONSTANTS,
   TILE_URL_MAPPING,
   TileKey,
-} from '../constants/tileMap';
-import { imageService } from '../services/imageService';
-import { overlayService } from '../services/overlayService';
-import { responseService } from '../services/responseService';
-import { tileCoordinateService } from '../services/tileCoordinateService';
-import { tileService } from '../services/tileService';
-import { complexTileSchema } from '../types/complexMap';
-import { validateRdCoords, validateZ } from '../utils/validateRD';
+} from '../constants/map.js';
+import { imageService } from '../services/imageService.js';
+import { overlayService } from '../services/overlayService.js';
+import { responseService } from '../services/responseService.js';
+import { tileCoordinateService } from '../services/tileCoordinateService.js';
+import { tileService } from '../services/tileService.js';
+import { complexTileSchema } from '../types/complexMap.js';
+import { ValidationError } from '../types/errors.js';
+import {
+  validateRdCoords,
+  validateZ,
+  validateColor,
+} from '../utils/validateRD.js';
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.get(
@@ -20,18 +25,39 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
       try {
         const { z, x, y } = request.params;
         const {
-          geojson,
+          geojson: geojsonString,
           achtergrond,
-          kleur = TILE_CONSTANTS.DEFAULT_COLOR,
+          kleur = MAP_CONSTANTS.DEFAULT_COLOR,
         } = request.query;
 
-        // Validate and parse coordinates
         const { x: parsedX, y: parsedY } = validateRdCoords(x, y);
         validateZ(z);
+        validateColor(kleur);
+
+        let parsedGeoJSON:
+          | { type: string; coordinates: unknown }
+          | undefined;
+        if (geojsonString) {
+          try {
+            parsedGeoJSON = JSON.parse(geojsonString) as {
+              type: string;
+              coordinates: unknown;
+            };
+          } catch {
+            throw new ValidationError(
+              'Invalid GeoJSON: could not parse JSON'
+            );
+          }
+          if (!parsedGeoJSON.type || !parsedGeoJSON.coordinates) {
+            throw new ValidationError(
+              'Invalid GeoJSON: must have "type" and "coordinates" fields'
+            );
+          }
+        }
 
         const tileBaseUrl =
           TILE_URL_MAPPING[
-            (achtergrond ?? TILE_CONSTANTS.DEFAULT_TILE_KEY) as TileKey
+            (achtergrond ?? MAP_CONSTANTS.DEFAULT_TILE_KEY) as TileKey
           ];
 
         const {
@@ -44,7 +70,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           parsedX,
           parsedY,
           z,
-          geojson
+          parsedGeoJSON
         );
 
         const [tiles, overlayedImageBuffer] = await Promise.all([
@@ -57,7 +83,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
             pixelCoords.y
           ),
           overlayService.createOverlay(
-            geojson,
+            parsedGeoJSON,
             achtergrond,
             kleur,
             bbox,
@@ -70,8 +96,13 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           overlayedImageBuffer
         );
 
+        if (adjustedZ !== z) {
+          reply.header('X-Adjusted-Zoom', adjustedZ);
+        }
+
         return responseService.sendImage(compositeImageBuffer, reply);
       } catch (error) {
+        request.log.error(error);
         return responseService.handleError(error, reply);
       }
     }

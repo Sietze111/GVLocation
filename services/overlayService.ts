@@ -1,16 +1,21 @@
-import { MAP_CONSTANTS } from '../constants/map';
-import { handleGeoJSON } from './geojsonUtils';
-import { imageService } from './imageService';
-import { overlayConfigService } from './overlayConfigService';
+import { MAP_CONSTANTS } from '../constants/map.js';
+import { handleGeoJSON } from './geojsonUtils.js';
+import { imageService } from './imageService.js';
+import { overlayConfigService } from './overlayConfigService.js';
 
 interface PixelCoords {
   x: number;
   y: number;
 }
 
+interface ParsedGeoJSON {
+  type: string;
+  coordinates: unknown;
+}
+
 export const overlayService = {
   async createOverlay(
-    geojson: string | undefined,
+    geojson: ParsedGeoJSON | undefined,
     achtergrond: string | undefined,
     kleur: string,
     bbox: [number, number, number, number],
@@ -22,17 +27,16 @@ export const overlayService = {
         pixelCoords.x,
         pixelCoords.y,
         MAP_CONSTANTS.MARKER_RADIUS,
-        MAP_CONSTANTS.ATTRIBUTION
+        MAP_CONSTANTS.OSM_ATTRIBUTION
       );
     }
 
-    const { type, coordinates } = JSON.parse(geojson);
     const { attribution, xValue } =
       overlayConfigService.getAttributionConfig(achtergrond);
 
     const { pathString } = handleGeoJSON(
-      type,
-      coordinates,
+      geojson.type,
+      geojson.coordinates,
       bbox,
       pixelCoords.x,
       pixelCoords.y,
