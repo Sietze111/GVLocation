@@ -139,6 +139,12 @@ export const batchSchema = {
             format: Type.Optional(
               Type.String({ description: 'Actual output format' })
             ),
+            attribution: Type.Optional(
+              Type.String({
+                description:
+                  'Attribution text for the background map data (e.g. "\u00a9 OpenStreetMap" or "\u00a9 PDOK")',
+              })
+            ),
             cacheHit: Type.Optional(
               Type.Boolean({
                 description:

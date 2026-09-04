@@ -10,6 +10,7 @@ import { responseService } from '../services/responseService.js';
 import { tileCoordinateService } from '../services/tileCoordinateService.js';
 import { tileService } from '../services/tileService.js';
 import { tileCache } from '../services/tileCache.js';
+import { overlayConfigService } from '../services/overlayConfigService.js';
 import { metrics } from '../services/metrics.js';
 import { batchSchema } from '../types/batch.js';
 import { ValidationError } from '../types/errors.js';
@@ -94,7 +95,6 @@ async function processSingleItem(item: BatchItem, index: number) {
     ),
     overlayService.createOverlay(
       parsedGeoJSON,
-      achtergrond,
       color,
       bbox,
       pixelCoords,
@@ -112,6 +112,7 @@ async function processSingleItem(item: BatchItem, index: number) {
     index,
     image: compositeImageBuffer.toString('base64'),
     format: outputFormat,
+    attribution: overlayConfigService.getAttribution(achtergrond),
     cacheHit: tileMeta.sourceTiles === 0,
     sourceTileCount: tileMeta.sourceTiles,
     adjustedZoom: adjustedZ !== z ? adjustedZ : undefined,
@@ -169,6 +170,7 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
               index: r.index,
               image: r.image,
               format: r.format,
+              attribution: r.attribution,
               cacheHit: r.cacheHit,
               sourceTileCount: r.sourceTileCount,
               adjustedZoom: r.adjustedZoom,

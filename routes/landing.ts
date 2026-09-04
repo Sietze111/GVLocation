@@ -52,6 +52,7 @@ const render = (): string => `<!DOCTYPE html>
     <li>Coordinate systems: <code>crs=rd</code> (default) or <code>crs=wgs84</code></li>
     <li>Zoom range: ${MAP_CONSTANTS.MIN_ZOOM}–${MAP_CONSTANTS.MAX_ZOOM}</li>
     <li>Every image response is cached and served with an <code>ETag</code> and <code>Cache-Control</code>; conditional requests return <code>304 Not Modified</code>. Responses vary on <code>Accept</code>.</li>
+    <li>Map attribution (OSM/PDOK) is returned in the <code>X-Attribution</code> header (and <code>attribution</code> per batch result) so you can render it in your UI &mdash; it is not baked into the image.</li>
     <li>Rate limiting keys on <code>X-Api-Key</code> (or client IP). Limit the batch/warm window or raise <code>RATE_LIMIT_MAX</code> in production for large jobs.</li>
     <li>Errors use a consistent envelope: <code>{ "error": { "code": "...", "message": "..." } }</code> (e.g. 400 <code>BAD_REQUEST</code>, 404 <code>NOT_FOUND</code>, 429 <code>RATE_LIMITED</code>, 500 <code>INTERNAL_ERROR</code>).</li>
   </ul>

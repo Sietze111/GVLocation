@@ -11,6 +11,8 @@ export const complexTileSchema = {
   summary: 'Location with GeoJSON overlay',
   description: `Renders a 256x256 map tile with a GeoJSON geometry drawn over it. Supported geometry types: **Point**, **MultiPoint**, **LineString**, **MultiLineString**, **Polygon**, **MultiPolygon**. The geometry is auto-fit: if it doesn't fit at the requested zoom, the zoom is reduced (see the \`X-Adjusted-Zoom\` response header).
 
+**Attribution:** the underlying map data requires attribution. It is returned in the \`X-Attribution\` response header (e.g. \`© OpenStreetMap\` for \`achtergrond=osm\`, \`© PDOK\` for \`achtergrond=luchtfoto|pdok\`) so you can render it in your own UI. It is intentionally not baked into the image pixels.
+
 ### Simple point marker (blue dot on OSM)
 \`\`\`
 GET /tiles/overlay/18/153895,01042669/473352,618162258?kleur=blue&geojson=%7B%22type%22%3A%22Point%22%2C%22coordinates%22%3A%5B153895.01042669%2C473352.618162258%5D%7D

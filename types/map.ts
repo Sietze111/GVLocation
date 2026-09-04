@@ -86,7 +86,9 @@ GET /tiles/marker/18/5.37112/52.2482?crs=wgs84
 GET /tiles/marker/18/5.37112/52.2482?crs=wgs84&format=avif
 \`\`\`
 
-For many locations at once, use \`POST /tiles/batch\` instead.`,
+For many locations at once, use \`POST /tiles/batch\` instead.
+
+**Attribution:** the map data requires attribution, returned in the \`X-Attribution\` response header (\`© OpenStreetMap\`), so you can render it in your own UI. It is intentionally not baked into the image pixels.`,
   params: tileParamsSchema,
   querystring: Type.Object({
     crs: crsQuerySchema,

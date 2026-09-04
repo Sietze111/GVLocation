@@ -87,6 +87,7 @@ This makes repeated fetches of the same tile cheap for both your app and our ups
 - **`ETag` + `304`** — conditional requests return `304 Not Modified` when the tile is unchanged.
 - **`Vary: Accept`** — caches store PNG/WebP/AVIF versions separately.
 - **`X-Adjusted-Zoom`** — returned by the overlay endpoint when the zoom was reduced to fit the geometry inside the tile.
+- **`X-Attribution`** — map data requires attribution (OSM/PDOK). The API returns it in the `X-Attribution` response header (and an `attribution` field per batch result) so your UI can render it, instead of baking text into the image pixels.
 
 ### OpenTelemetry
 
@@ -296,8 +297,8 @@ Each item accepts the union of the marker/overlay params:
 ```json
 {
   "results": [
-    { "index": 0, "image": "<base64 PNG>", "format": "png", "cacheHit": false, "sourceTileCount": 4, "adjustedZoom": null },
-    { "index": 1, "image": "<base64 WebP>", "format": "webp", "cacheHit": true, "sourceTileCount": 0, "adjustedZoom": 16 },
+    { "index": 0, "image": "<base64 PNG>", "format": "png", "attribution": "© OpenStreetMap", "cacheHit": false, "sourceTileCount": 4, "adjustedZoom": null },
+    { "index": 1, "image": "<base64 WebP>", "format": "webp", "attribution": "© PDOK", "cacheHit": true, "sourceTileCount": 0, "adjustedZoom": 16 },
     { "index": 2, "image": "", "error": "Invalid color" }
   ],
   "stats": {
@@ -310,6 +311,7 @@ Each item accepts the union of the marker/overlay params:
 ```
 
 - `results[index]` keeps the same order as the request.
+- `attribution` — the attribution text for the background map data, render it in your UI (e.g. under the image).
 - `cacheHit` — whether every source tile for this item came from the cache (no upstream request).
 - `sourceTileCount` — how many external map tiles were fetched for this item (0 = fully served from cache).
 - A failed item does **not** fail the whole batch — it returns `error` and an empty `image`.

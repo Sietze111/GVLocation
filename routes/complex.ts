@@ -18,6 +18,7 @@ import {
   parseCrs,
   resolveFormat,
 } from '../utils/validateRD.js';
+import { overlayConfigService } from '../services/overlayConfigService.js';
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.get(
@@ -98,7 +99,6 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           ),
           overlayService.createOverlay(
             parsedGeoJSON,
-            achtergrond,
             kleur,
             bbox,
             pixelCoords,
@@ -116,11 +116,14 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           reply.header('X-Adjusted-Zoom', adjustedZ);
         }
 
+        const attribution = overlayConfigService.getAttribution(achtergrond);
+
         return responseService.sendImage(
           compositeImageBuffer,
           reply,
           request,
-          outputFormat
+          outputFormat,
+          attribution
         );
       } catch (error) {
         request.log.error(error);

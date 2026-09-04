@@ -41,7 +41,8 @@ export const responseService = {
     buffer: Buffer,
     reply: FastifyReply,
     request: FastifyRequest,
-    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT
+    format: OutputFormat = MAP_CONSTANTS.DEFAULT_FORMAT,
+    attribution?: string
   ) {
     const etag = etagFromBuffer(buffer);
     const ifNoneMatch = request.headers['if-none-match'];
@@ -55,11 +56,16 @@ export const responseService = {
         .send();
     }
 
-    return reply
+    const r = reply
       .type(MIME_TYPES[format])
       .header('ETag', etag)
       .header('Cache-Control', MAP_CONSTANTS.CACHE_CONTROL)
-      .header('Vary', 'Accept')
-      .send(buffer);
+      .header('Vary', 'Accept');
+
+    if (attribution) {
+      r.header('X-Attribution', attribution);
+    }
+
+    return r.send(buffer);
   },
 };

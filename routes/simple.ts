@@ -1,4 +1,5 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { MAP_CONSTANTS } from '../constants/map.js';
 import { tileSchema } from '../types/map.js';
 import { responseService } from '../services/responseService.js';
 import { tileService } from '../services/tileService.js';
@@ -41,7 +42,6 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           pixelX,
           pixelY,
           5,
-          '\u00a9 OpenStreetMap',
           outputFormat
         );
 
@@ -49,7 +49,8 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
           overlayedImageBuffer,
           reply,
           request,
-          outputFormat
+          outputFormat,
+          MAP_CONSTANTS.OSM_ATTRIBUTION
         );
       } catch (error) {
         request.log.error(error);
