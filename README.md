@@ -242,19 +242,21 @@ Renders a coordinate **plus a GeoJSON geometry** drawn over the map (point, line
 
 #### Examples
 
-Simple point marker with a colored dot, default OSM background:
+> **Note:** the `geojson` `coordinates` are always in **WGS84 (lon/lat)**, regardless of the `crs` you set for `x`/`y`. Keep geometries small and centered on the location so they render at the requested zoom.
+
+Simple point marker with a colored dot on the location, default OSM background. The RD point (153895.01042669, 473352.618162258) is WGS84 5.371023, 52.248213:
 ```
-GET /tiles/overlay/16/153895.01042669/473352.618162258?geojson=%7B%22type%22%3A%22Point%22%2C%22coordinates%22%3A%5B153895.01042669%2C473352.618162258%5D%7D
+GET /tiles/overlay/16/153895.01042669/473352.618162258?kleur=blue&geojson=%7B%22type%22%3A%22Point%22%2C%22coordinates%22%3A%5B5.371023%2C52.248213%5D%7D
 ```
 
-Area (polygon) of a parcel in blue, on PDOK aerial imagery:
+Area (≈40m × 40m parcel boundary) in blue, on PDOK aerial imagery:
 ```
-GET /tiles/overlay/17/154000,5/473400,2?geojson=%7B%22type%22%3A%22Polygon%22%2C%22coordinates%22%3A%5B%5B%5B153895%2C473352%5D%2C%5B153900%2C473352%5D%2C%5B153900%2C473357%5D%2C%5B153895%2C473357%5D%2C%5B153895%2C473352%5D%5D%5D%7D&kleur=blue&achtergrond=luchtfoto
+GET /tiles/overlay/17/153895.01042669/473352.618162258?geojson=%7B%22type%22%3A%22Polygon%22%2C%22coordinates%22%3A%5B%5B%5B5.371023%2C52.248213%5D%2C%5B5.371243%2C52.248214%5D%2C%5B5.371243%2C52.248330%5D%2C%5B5.371023%2C52.248330%5D%2C%5B5.371023%2C52.248213%5D%5D%5D%7D&kleur=blue&achtergrond=luchtfoto
 ```
 
-Line (road/canal) in green, WGS84 coordinates, WebP output:
+Line (road/canal) in green, WGS84 path coordinates, WebP output:
 ```
-GET /tiles/overlay/15/5.37112/52.2482?crs=wgs84&format=webp&kleur=green&geojson=%7B%22type%22%3A%22LineString%22%2C%22coordinates%22%3A%5B%5B5.37%2C52.24%5D%2C%5B5.38%2C52.25%5D%2C%5B5.39%2C52.26%5D%5D%7D
+GET /tiles/overlay/15/5.371023/52.248213?crs=wgs84&format=webp&kleur=green&geojson=%7B%22type%22%3A%22LineString%22%2C%22coordinates%22%3A%5B%5B5.3708%2C52.2481%5D%2C%5B5.3712%2C52.2482%5D%2C%5B5.3716%2C52.2483%5D%5D%7D
 ```
 
 **When to use:** you need the shape of the thing displayed — a plot boundary, a road segment, a survey area. Without `geojson` this endpoint behaves like `marker`.
@@ -350,15 +352,15 @@ Many WGS84 locations as WebP (for a report, this cuts ~75% bandwidth):
 }
 ```
 
-Mixed — a parcel overlay plus a plain marker:
+Mixed — a parcel overlay plus a plain marker. The overlay's `geojson` `coordinates` are always WGS84:
 ```json
 {
   "items": [
     {
       "z": 17,
-      "x": "154000,5",
-      "y": "473400,2",
-      "geojson": "{\"type\":\"Polygon\",\"coordinates\":[[[153895,473352],[153900,473352],[153900,473357],[153895,473357],[153895,473352]]]}",
+      "x": "153895,01042669",
+      "y": "473352,618162258",
+      "geojson": "{\"type\":\"Polygon\",\"coordinates\":[[[5.371023,52.248213],[5.371243,52.248214],[5.371243,52.248330],[5.371023,52.248330],[5.371023,52.248213]]]}",
       "kleur": "blue",
       "achtergrond": "luchtfoto"
     },

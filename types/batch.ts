@@ -96,14 +96,15 @@ export const batchSchema = {
 \`\`\`
 
 ### Parcel overlay + plain marker (mixed)
+The overlay \`geojson\` \`coordinates\` are always **WGS84 (lon/lat)**, so center the geometry on the location and keep it small.
 \`\`\`json
 {
   "items": [
     {
       "z": 17,
-      "x": "154000,5",
-      "y": "473400,2",
-      "geojson": "{\\"type\\":\\"Polygon\\",\\"coordinates\\":[[[153895,473352],[153900,473352],[153900,473357],[153895,473357],[153895,473352]]]}",
+      "x": "153895,01042669",
+      "y": "473352,618162258",
+      "geojson": "{\\"type\\":\\"Polygon\\",\\"coordinates\\":[[[5.371023,52.248213],[5.371243,52.248214],[5.371243,52.248330],[5.371023,52.248330],[5.371023,52.248213]]]}",
       "kleur": "blue",
       "achtergrond": "luchtfoto"
     },
