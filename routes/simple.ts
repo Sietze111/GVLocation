@@ -12,7 +12,7 @@ import {
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.get(
-    '/simple/:z/:x/:y',
+    '/tiles/marker/:z/:x/:y',
     { schema: tileSchema },
     async (request, reply) => {
       try {

@@ -21,7 +21,7 @@ import {
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.get(
-    '/:z/:x/:y',
+    '/tiles/overlay/:z/:x/:y',
     { schema: complexTileSchema },
     async (request, reply) => {
       try {

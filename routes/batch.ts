@@ -148,7 +148,7 @@ function processInBatches<T>(
 
 const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
   fastify.post(
-    '/batch',
+    '/tiles/batch',
     { schema: batchSchema },
     async (request, reply) => {
       const { items } = request.body;
