@@ -1,95 +1,41 @@
-import { bboxPolygon } from '@turf/bbox-polygon';
-import { booleanWithin } from '@turf/boolean-within';
-import {
-  lineString,
-  multiLineString,
-  multiPoint,
-  multiPolygon,
-  point,
-  polygon,
-} from '@turf/helpers';
-import type {
-  BoundingBox,
-  GeoJSONCoordinate,
-  GeoJSONGeometry,
-} from '../types/geometry.js';
+import type { BoundingBox } from '../types/geometry.js';
 
-export function isInsideBoundingBox(
-  geometry: GeoJSONGeometry,
-  boundingBox: BoundingBox
-): boolean {
-  const [minLng, minLat, maxLng, maxLat] = boundingBox;
-
-  const checkCoordinates = (coordinates: GeoJSONCoordinate[]): boolean => {
-    for (const coordinate of coordinates) {
-      const [lng, lat] = coordinate;
-      if (lng < minLng || lng > maxLng || lat < minLat || lat > maxLat) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  switch (geometry.type) {
+const extractCoords = (
+  coordinates: unknown,
+  type: string
+): [number, number][] => {
+  switch (type) {
     case 'Point':
+      return [coordinates as [number, number]];
     case 'MultiPoint':
-      return checkCoordinates(
-        geometry.coordinates as GeoJSONCoordinate[]
-      );
     case 'LineString':
+      return coordinates as [number, number][];
     case 'MultiLineString':
     case 'Polygon':
+      return (coordinates as [number, number][][]).flat();
     case 'MultiPolygon':
-      for (const coordinates of geometry.coordinates) {
-        if (!checkCoordinates(coordinates as GeoJSONCoordinate[])) {
-          return false;
-        }
-      }
-      return true;
+      return (coordinates as [number, number][][][]).flat(2);
     default:
-      return false;
+      throw new Error('Unsupported GeoJSON type');
   }
+};
+
+export function allCoordinatesWithin(
+  coordinates: unknown,
+  boundingBox: BoundingBox,
+  type: string
+): boolean {
+  const [minLng, minLat, maxLng, maxLat] = boundingBox;
+  return extractCoords(coordinates, type).every(
+    ([lng, lat]) =>
+      lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat
+  );
 }
 
 export function geojsonFitsOnTile(
   coordinates: unknown,
-  bbox: [number, number, number, number],
+  bbox: BoundingBox,
   type: string
 ): boolean {
-  const box = bboxPolygon(bbox);
-
-  switch (type) {
-    case 'Point':
-      return booleanWithin(
-        point(coordinates as [number, number]),
-        box
-      );
-    case 'LineString':
-      return booleanWithin(
-        lineString(coordinates as [number, number][]),
-        box
-      );
-    case 'Polygon':
-      return booleanWithin(
-        polygon(coordinates as [number, number][][]),
-        box
-      );
-    case 'MultiPoint':
-      return booleanWithin(
-        multiPoint(coordinates as [number, number][]),
-        box
-      );
-    case 'MultiLineString':
-      return booleanWithin(
-        multiLineString(coordinates as [number, number][][]),
-        box
-      );
-    case 'MultiPolygon':
-      return booleanWithin(
-        multiPolygon(coordinates as [number, number][][][]),
-        box
-      );
-    default:
-      throw new Error('Unsupported GeoJSON type');
-  }
+  return allCoordinatesWithin(coordinates, bbox, type);
 }

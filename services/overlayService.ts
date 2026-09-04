@@ -25,23 +25,19 @@ export const overlayService = {
         pixelCoords.x,
         pixelCoords.y,
         MAP_CONSTANTS.MARKER_RADIUS,
-        format
+        format,
+        kleur
       );
     }
 
-    const { pathString } = handleGeoJSON(
+    const path = handleGeoJSON(
       geojson.type,
       geojson.coordinates,
       bbox,
       pixelCoords.x,
-      pixelCoords.y,
-      kleur
+      pixelCoords.y
     );
 
-    return imageService.createGeoJSONOverlay(
-      pathString,
-      kleur,
-      format
-    );
+    return imageService.createGeoJSONOverlay(path, kleur, format);
   },
 };
