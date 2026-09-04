@@ -12,15 +12,15 @@ npm run dev      # Development with auto-reload
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Server port |
-| `NODE_ENV` | `development` | Set to `production` to disable Swagger UI |
-| `LOG_LEVEL` | `info` / `debug` | Fastify log level |
-| `RATE_LIMIT_ENABLED` | `true` | Set to `false` to disable rate limiting |
-| `RATE_LIMIT_MAX` | `1000` | Max requests per time window per key |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
-| `CORS_ORIGIN` | `true` | CORS origin |
+| Variable               | Default          | Description                               |
+| ---------------------- | ---------------- | ----------------------------------------- |
+| `PORT`                 | `3000`           | Server port                               |
+| `NODE_ENV`             | `development`    | Set to `production` to disable Swagger UI |
+| `LOG_LEVEL`            | `info` / `debug` | Fastify log level                         |
+| `RATE_LIMIT_ENABLED`   | `true`           | Set to `false` to disable rate limiting   |
+| `RATE_LIMIT_MAX`       | `1000`           | Max requests per time window per key      |
+| `RATE_LIMIT_WINDOW_MS` | `60000`          | Rate limit window (ms)                    |
+| `CORS_ORIGIN`          | `true`           | CORS origin                               |
 
 ## Endpoints
 
@@ -32,11 +32,11 @@ Returns server status, uptime, and cache statistics.
 
 Single coordinate tile with red marker.
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `z` | number | Zoom level (8-19) |
-| `x` | string | RD X coordinate (0-300000) |
-| `y` | string | RD Y coordinate (300000-650000) |
+| Param | Type   | Description                     |
+| ----- | ------ | ------------------------------- |
+| `z`   | number | Zoom level (8-19)               |
+| `x`   | string | RD X coordinate (0-300000)      |
+| `y`   | string | RD Y coordinate (300000-650000) |
 
 Supports comma and dot decimal separators (e.g. `153895,01042669` or `153895.01042669`).
 
@@ -44,11 +44,11 @@ Supports comma and dot decimal separators (e.g. `153895,01042669` or `153895.010
 
 Single coordinate tile with GeoJSON overlay.
 
-| Query | Type | Description |
-|-------|------|-------------|
-| `geojson` | string | GeoJSON geometry (Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon) |
-| `achtergrond` | string | `osm` (default) or `luchtfoto`/`pdok` (PDOK aerial) |
-| `kleur` | string | CSS color (default: `red`) |
+| Query         | Type   | Description                                                                              |
+| ------------- | ------ | ---------------------------------------------------------------------------------------- |
+| `geojson`     | string | GeoJSON geometry (Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon) |
+| `achtergrond` | string | `osm` (default) or `luchtfoto`/`pdok` (PDOK aerial)                                      |
+| `kleur`       | string | CSS color (default: `red`)                                                               |
 
 Returns `X-Adjusted-Zoom` header when zoom was reduced to fit geometry.
 
@@ -57,6 +57,7 @@ Returns `X-Adjusted-Zoom` header when zoom was reduced to fit geometry.
 Process multiple coordinates in a single request. Designed for bulk report generation.
 
 **Request body:**
+
 ```json
 {
   "items": [
@@ -82,6 +83,7 @@ Process multiple coordinates in a single request. Designed for bulk report gener
 - Failed items return an error message without failing the whole batch.
 
 **Response:**
+
 ```json
 {
   "results": [
@@ -109,15 +111,15 @@ HTTP keep-alive is enabled with persistent connections (50 max sockets) to the t
 
 ### Batch Processing
 
-The `/batch` endpoint processes up to 100 items per request with 10 concurrent workers. For 10,000 trees, split into 100 requests of 100 items each.
+The `/batch` endpoint processes up to 100 items per request with 10 concurrent workers. For 10,000 items, split into 100 requests of 100 items each.
 
 ## Error Responses
 
-| Status | Description |
-|--------|-------------|
-| 400 | Invalid coordinates, zoom, GeoJSON, or color |
-| 429 | Rate limit exceeded |
-| 500 | Server error or tile fetch failure |
+| Status | Description                                  |
+| ------ | -------------------------------------------- |
+| 400    | Invalid coordinates, zoom, GeoJSON, or color |
+| 429    | Rate limit exceeded                          |
+| 500    | Server error or tile fetch failure           |
 
 ## Azure Deployment
 
