@@ -89,6 +89,20 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
     {
       schema: {
         tags: ['tiles'],
+        summary: 'Pre-fetch tiles into the cache',
+        description: `Pre-fetches the underlying map tiles for a list of locations so that a subsequent report run hits a warm cache (much lower latency, near-zero upstream traffic).
+
+### Pre-warm for a 10,000-tree report (split into 10 calls of 1000)
+\`\`\`json
+{
+  "items": [
+    { "z": 18, "x": "153895,01042669", "y": "473352,618162258" },
+    { "z": 18, "x": "154000,5",        "y": "473400,2" }
+  ]
+}
+\`\`\`
+
+After warming, \`POST /tiles/batch\` with the same items will report \`cacheHit: true\` and \`sourceTileCount: 0\` for every result.`,
         body: Type.Object({
           items: Type.Array(warmItemSchema, {
             minItems: 1,

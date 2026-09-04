@@ -63,6 +63,30 @@ export const formatQuerySchema = Type.Optional(
 
 export const tileSchema = {
   tags: ['tiles'],
+  summary: 'Single location marker',
+  description: `Renders a 256x256 map tile with a red location marker.
+
+### RD coordinates, default PNG
+\`\`\`
+GET /tiles/marker/18/153895,01042669/473352,618162258
+\`\`\`
+
+### RD coordinates, WebP
+\`\`\`
+GET /tiles/marker/18/153895.01042669/473352.618162258?format=webp
+\`\`\`
+
+### WGS84 (lon/lat), default PNG
+\`\`\`
+GET /tiles/marker/18/5.37112/52.2482?crs=wgs84
+\`\`\`
+
+### WGS84, AVIF
+\`\`\`
+GET /tiles/marker/18/5.37112/52.2482?crs=wgs84&format=avif
+\`\`\`
+
+For many locations at once, use \`POST /tiles/batch\` instead.`,
   params: tileParamsSchema,
   querystring: Type.Object({
     crs: crsQuerySchema,

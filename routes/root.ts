@@ -11,6 +11,8 @@ const plugin: FastifyPluginAsyncTypebox = async function (fastify, _opts) {
     {
       schema: {
         tags: ['system'],
+        summary: 'Server health check',
+        description: `Returns server status, uptime and cache statistics. Use as the Azure health probe endpoint.`,
         response: {
           200: Type.Object({
             status: Type.String(),

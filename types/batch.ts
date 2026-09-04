@@ -70,6 +70,51 @@ export const errorResponseSchema = Type.Object(
 
 export const batchSchema = {
   tags: ['tiles'],
+  summary: 'Render up to 100 locations in one request',
+  description: `Renders up to 100 locations concurrently with a shared tile cache. Each result includes the base64-encoded image and per-item metadata.
+
+### Simple markers (RD, WebP)
+\`\`\`json
+{
+  "items": [
+    { "z": 18, "x": "153895,01042669", "y": "473352,618162258" },
+    { "z": 18, "x": "154000,5",        "y": "473400,2" },
+    { "z": 18, "x": "154100,5",        "y": "473500,2" }
+  ],
+  "format": "webp"
+}
+\`\`\`
+
+### WGS84 coordinates
+\`\`\`json
+{
+  "items": [
+    { "z": 17, "x": "5.45", "y": "52.15", "crs": "wgs84", "format": "webp" },
+    { "z": 17, "x": "5.46", "y": "52.15", "crs": "wgs84", "format": "webp" }
+  ]
+}
+\`\`\`
+
+### Parcel overlay + plain marker (mixed)
+\`\`\`json
+{
+  "items": [
+    {
+      "z": 17,
+      "x": "154000,5",
+      "y": "473400,2",
+      "geojson": "{\\"type\\":\\"Polygon\\",\\"coordinates\\":[[[153895,473352],[153900,473352],[153900,473357],[153895,473357],[153895,473352]]]}",
+      "kleur": "blue",
+      "achtergrond": "luchtfoto"
+    },
+    { "z": 18, "x": "153895,01042669", "y": "473352,618162258" }
+  ]
+}
+\`\`\`
+
+### Recommended workflow for 10,000 locations
+1. **POST /tiles/warm** the full location list to fill the cache.
+2. **POST /tiles/batch** in 100-item chunks. You'll see \`cacheHit: true\` and \`sourceTileCount: 0\` on nearly every item.`,
   body: Type.Object(
     {
       items: Type.Array(batchItemSchema, {
